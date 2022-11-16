@@ -61,7 +61,7 @@ def main(args):
                 y2=right_conf_int,
                 color='lightblue'
                 )
-        ax.legend(('Mean', f'{args.confidence} confidence interval'))
+        ax.legend(('Mean delay', f'{args.confidence} confidence interval'))
         ax.set_xticks(utilisations_plot)
         ax.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
         ax.set_xlabel('Server utilisation level (%)')

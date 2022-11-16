@@ -1,6 +1,5 @@
 import numpy as np
 from pandas import Series
-from typing import Callable
 from scipy.stats import t, norm
 
 
@@ -40,6 +39,9 @@ class QueueSimulator:
             confidence: float,
             seed: int,
             verbose: bool):
+        """
+        
+        """
         self.users = 0
         self.time = 0
         self.confidence = confidence
@@ -87,6 +89,17 @@ class QueueSimulator:
             time: float,
             name: str
             ) -> None:
+        """
+        Add an element to the Future Event Set.
+        IN:
+            - time: the moment at which the event will be executed.
+            - name: 'arrival' to schedule an arrival event,
+                    'departure' to schedule a departure event.
+        OUT:
+            - the new event is appended to the stateful list
+              'fes', along with the action (the callable)
+              to be executed at the given time.
+        """
         if name == 'arrival':
             action = self.arrival
         elif name == 'departure':
@@ -100,12 +113,30 @@ class QueueSimulator:
             })
     
     def schedule_arrival(self) -> None:
+        """
+        Schedule a new arrival event.
+        IN:
+            - time: the moment at which the event
+                    will be executed.
+        OUT:
+            - the new arrival event has been added
+              to the Future Event Set
+        """
         self.schedule_event(
             time=self.time+self.inter_arrival_distribution(),
             name='arrival'
             )
 
     def schedule_departure(self) -> None:
+        """
+        Schedule a new departure event.
+        IN:
+            - time: the moment at which the event
+                    will be executed.
+        OUT:
+            - the new departure event has been added
+              to the Future Event Set
+        """
         self.schedule_event(
             time=self.time+self.service_distribution(),
             name='departure'
@@ -148,6 +179,17 @@ class QueueSimulator:
         return delay
 
     def collect_batch(self, collect: str) -> None:
+        """
+        Collect a batch of different size basing on the state
+        of the simulator (transient or steady).
+        IN:
+            - collect: specify which metric to collect,
+                       'arrival' to store queue sizes,
+                       'departure' to store delays.
+        OUT:
+            - The collected values are appended to
+              a stateful list 'values'.
+        """
         batch_size = self.transient_batch_size \
             if self.transient else self.steady_batch_size
         i = 0
@@ -166,8 +208,17 @@ class QueueSimulator:
             self,
             start: int=0
             ) -> tuple[float, tuple[float, float]]:
-        self.update_cumulative_means(start=start)
-        values = self.values
+        """
+        Compute the confidence interval of the mean value
+        of the collected metric, from the 'start' value.
+        IN:
+            - start: the index of the starting point for computing
+                     confidence interval
+        OUT:
+            - the mean value
+            - the confidence interval
+        """
+        values = np.array(self.values)[start:]
         n = len(values)
         mean = np.mean(values)
         std = np.std(values, ddof=1)/np.sqrt(n)
@@ -177,6 +228,18 @@ class QueueSimulator:
             return mean, norm.interval(self.confidence, mean, std)
 
     def update_cumulative_means(self, start: int=0) -> None:
+        """
+        Update the cumulative mean array of the collected metric.
+        IN:
+            - start: set it equal to the transient end moment
+                     to recompute cumulative means only on steady
+                     otherwise default 0 compute the cumulative 
+                     means on transient+steady.
+        OUT:
+            - the cumulative means array is a field of this class,
+              set equal to the transient end moment to have valuable
+              results.
+        """
         values = np.array(self.values)[start:]
         self.cumulative_means = Series(data=values)\
                                     .expanding()\
@@ -187,6 +250,16 @@ class QueueSimulator:
             self,
             collect: str
             ) -> tuple[float, tuple[float, float]]:
+        """
+        Execute the simulation.
+        IN:
+            - collect: 'arrival' collect queue sizes.
+                       'departure' collect delays.
+        OUT:
+            a tuple, the first value is the mean value
+            of the collected metric, the second is the
+            confidence interval.
+        """
         # removing transient state
         self.values = list()
         n = 0
