@@ -20,9 +20,6 @@ class Client:
 
 class QueueSimulator:
 
-    class UnhandledServiceDistribution(Exception):
-        pass
-
     def hyperexponential2(
             self,
             p: np.float128,
@@ -35,9 +32,8 @@ class QueueSimulator:
 
     def __init__(
             self,
-            utilization: float,
+            utilisation: float,
             service_distribution: str,
-            endtime: int,
             transient_batch_size: int,
             steady_batch_size: int,
             transient_tolerance: float,
@@ -51,16 +47,16 @@ class QueueSimulator:
         self.transient_batch_size = transient_batch_size
         self.steady_batch_size = steady_batch_size
         self.transient_tolerance = transient_tolerance
-        self.endtime = endtime
         self.verbose = verbose
-        self.utilization = utilization
+        self.utilisation = utilisation
         self.queue = list()
         self.fes = list()
         self.queue_sizes = list()
         self.delays = list()
         self.generator = np.random.default_rng(seed=seed)
+        self.service_distribution_str = service_distribution
         self.inter_arrival_distribution = lambda: \
-            self.generator.exponential(1/self.utilization)
+            self.generator.exponential(1/self.utilisation)
         if service_distribution == 'exp':
             self.service_distribution = lambda: \
                 self.generator.exponential(1)
@@ -74,23 +70,45 @@ class QueueSimulator:
                     mu2=9/np.sqrt(2)+1
                 )
         else:
-            raise self.UnhandledServiceDistribution(
+            raise Exception(
                 f'{service_distribution} \
                     distribution is not implemented.'
                 )
         # scheduling the first arrival
-        self.create_event(
-            time=self.inter_arrival_distribution(),
-            action=self.arrival,
+        self.schedule_arrival()
+
+    def __str__(self) -> str:
+        return '\nSimulator info:\n' + \
+            f'Service distribution: {self.service_distribution_str}\n' + \
+            f'Utilisation: {self.utilisation}'
+
+    def schedule_event(
+            self,
+            time: float,
+            name: str) -> None:
+        if name == 'arrival':
+            action = self.arrival
+        elif name == 'departure':
+            action = self.departure
+        else:
+            raise Exception(f'Action {name} not handled.')
+        self.fes.append({
+            'time': time,
+            'action': action,
+            'name': name
+            })
+    
+    def schedule_arrival(self) -> None:
+        self.schedule_event(
+            time=self.time+self.inter_arrival_distribution(),
             name='arrival'
             )
 
-    def create_event(
-            self,
-            time: float,
-            action: Callable,
-            name: str) -> None:
-        self.fes.append({'time': time, 'action': action, 'name': name})
+    def schedule_departure(self) -> None:
+        self.schedule_event(
+            time=self.time+self.service_distribution(),
+            name='departure'
+            )
 
     def arrival(self) -> int:
         """
@@ -99,11 +117,7 @@ class QueueSimulator:
         - return the number of users in the queue
         """
         # schedule the next arrival
-        self.create_event(
-            time=self.time + self.inter_arrival_distribution(),
-            action=self.arrival,
-            name='arrival'
-            )
+        self.schedule_arrival()
         # the client arrives in the queue
         self.users += 1
         self.queue_sizes.append(self.users)
@@ -111,11 +125,7 @@ class QueueSimulator:
         if (self.users == 1):
             # there wasn't any client in the queue
             # then we serve it immediately
-            self.create_event(
-                time=self.time + self.service_distribution(),
-                action=self.departure,
-                name='departure'
-                )
+            self.schedule_departure()
         return self.users
               
     def departure(self) -> float:
@@ -133,17 +143,14 @@ class QueueSimulator:
         if (self.users > 0):
             # if there was another client in the queue
             # then serve it
-            self.create_event(
-                time=self.time + self.service_distribution(),
-                action=self.departure,
-                name='departure'
-                )
+            self.schedule_departure()
         return delay
 
     def collect_batch(self, collect: str) -> None:
         batch_size = self.transient_batch_size \
             if self.transient else self.steady_batch_size
-        for _ in range(batch_size):
+        i = 0
+        while i < batch_size:
             self.fes.sort(key=lambda x: x['time'], reverse=True)
             next_event = self.fes.pop()
             # advance the simulator in time to execute the next event
@@ -152,6 +159,7 @@ class QueueSimulator:
             value = next_event['action']()
             if next_event['name'] == collect:
                 self.values.append(value)
+                i += 1
 
     def confidence_interval(self, start: int=0) -> tuple[float, tuple[float, float]]:
         self.update_cumulative_means(start=start)
@@ -181,7 +189,7 @@ class QueueSimulator:
             self.update_cumulative_means()
             if len(self.cumulative_means) > 1:
                 relative_diff = np.abs(self.cumulative_means[-1] \
-                    - self.cumulative_means[-2]) / self.cumulative_means[-1]
+                    - self.cumulative_means[-2]) / self.cumulative_means[-2]
                 if relative_diff < self.transient_tolerance:
                     self.transient = False
                     self.transient_end = n*self.transient_batch_size
