@@ -1,8 +1,8 @@
 from simulator import QueueSimulator
 import argparse
 from matplotlib import pyplot as plt
-from tqdm import tqdm
 import numpy as np
+import atexit
 
 
 class SeedGenerator:
@@ -14,17 +14,23 @@ class SeedGenerator:
 
 
 def main(args):
+    atexit.register(lambda: plt.close('all'))
     if args.transient_batch_size is None:
         args.transient_batch_size = args.steady_batch_size
     utilisations = (args.utilisation,) \
         if args.utilisation is not None else \
         (0.1, 0.2, 0.4, 0.7, 0.8, 0.9, 0.95, 0.99, )
+    utilisations_plot = 100*np.array(utilisations)
     service_distributions = (args.service_distribution, ) \
         if args.service_distribution is not None else \
             ('exp', 'det', 'hyp', )
     seed_generator = SeedGenerator(seed=args.seed)
     for service_distribution in service_distributions:
-        for utilisation in utilisations:
+        mean = np.empty(shape=(len(utilisations)), dtype=np.float64)
+        left_conf_int = np.empty_like(mean)
+        right_conf_int = np.empty_like(mean)
+        for i in range(len(utilisations)):
+            utilisation = utilisations[i]
             sim = QueueSimulator(
                 utilisation=utilisation,
                 service_distribution=service_distribution,
@@ -36,28 +42,33 @@ def main(args):
                 verbose=args.verbose
             )
             print(sim)
-            mean, conf_int = sim.exec(collect='departure')
-            _, ax = plt.subplots(
-                nrows=2,
-                ncols=1,
-                figsize=(15, 10)
+            mean[i], (left_conf_int[i], right_conf_int[i]) = \
+                 sim.exec(collect='departure')
+            _, ax = plt.subplots(1, 1, figsize=(8, 8))
+            ax.plot(sim.delays, color='lightblue')
+            ax.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
+            ax.axvline(x=sim.transient_end, color='red', linestyle='dashed', linewidth=2)
+            ax.legend(('Delay', 'Mean delay', 'Transient end'))
+            ax.set_title(f'Delay\nutilisation: {utilisation}\nservice_distribution: {service_distribution}')
+            ax.set_xlabel('Time')
+            ax.set_ylabel('Delay')
+        # end for
+        _, ax = plt.subplots(1, 1, figsize=(8,8))
+        ax.plot(utilisations_plot, mean, color='black', marker='o')
+        ax.fill_between(
+                x=utilisations_plot,
+                y1=left_conf_int,
+                y2=right_conf_int,
+                color='lightblue'
                 )
-            if args.verbose:
-                ax[0].plot(sim.delays)
-                ax[0].plot(sim.cumulative_means)
-                ax[0].axvline(x=sim.transient_end, color='red')
-                ax[0].set_title('Delay')
-                ax[0].set_xlabel('Time')
-                ax[0].set_ylabel('Delay of a client at departure time')
-                
-                ax[1].plot(sim.queue_sizes)
-                ax[1].plot(sim.cumulative_means)
-                ax[1].axvline(x=sim.transient_end, color='red')
-                ax[1].set_title('Queue size')
-                ax[1].set_xlabel('Time')
-                ax[1].set_ylabel('Number of clients in the queue')
-            
-            #plt.show()
+        ax.legend(('Mean', f'{args.confidence} confidence interval'))
+        ax.set_xticks(utilisations_plot)
+        ax.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
+        ax.set_xlabel('Server utilisation level (%)')
+        ax.set_ylabel('Mean delay')
+    # end for
+    plt.show(block=False)
+    input('\nPress enter to close all the figures')
 
 
 if __name__ == '__main__':

@@ -85,7 +85,8 @@ class QueueSimulator:
     def schedule_event(
             self,
             time: float,
-            name: str) -> None:
+            name: str
+            ) -> None:
         if name == 'arrival':
             action = self.arrival
         elif name == 'departure':
@@ -161,9 +162,12 @@ class QueueSimulator:
                 self.values.append(value)
                 i += 1
 
-    def confidence_interval(self, start: int=0) -> tuple[float, tuple[float, float]]:
+    def confidence_interval(
+            self,
+            start: int=0
+            ) -> tuple[float, tuple[float, float]]:
         self.update_cumulative_means(start=start)
-        values = self.cumulative_means
+        values = self.values
         n = len(values)
         mean = np.mean(values)
         std = np.std(values, ddof=1)/np.sqrt(n)
@@ -179,7 +183,10 @@ class QueueSimulator:
                                     .mean()\
                                     .values
 
-    def exec(self, collect: str) -> tuple[float, tuple[float, float]]:
+    def exec(
+            self,
+            collect: str
+            ) -> tuple[float, tuple[float, float]]:
         # removing transient state
         self.values = list()
         n = 0
