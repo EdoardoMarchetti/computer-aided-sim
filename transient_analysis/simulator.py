@@ -37,8 +37,8 @@ class QueueSimulator:
             steady_batch_size: int,
             transient_tolerance: float,
             confidence: float,
-            seed: int,
-            verbose: bool):
+            accuracy: float,
+            seed: int):
         """
         
         """
@@ -49,7 +49,7 @@ class QueueSimulator:
         self.transient_batch_size = transient_batch_size
         self.steady_batch_size = steady_batch_size
         self.transient_tolerance = transient_tolerance
-        self.verbose = verbose
+        self.accuracy = accuracy
         self.utilisation = utilisation
         self.queue = list()
         self.fes = list()
@@ -189,10 +189,12 @@ class QueueSimulator:
         OUT:
             - The collected values are appended to
               a stateful list 'values'.
+            - Return the mean delay of the batch.
         """
         batch_size = self.transient_batch_size \
             if self.transient else self.steady_batch_size
         i = 0
+        batch_delay = 0
         while i < batch_size:
             self.fes.sort(key=lambda x: x['time'], reverse=True)
             next_event = self.fes.pop()
@@ -202,23 +204,21 @@ class QueueSimulator:
             value = next_event['action']()
             if next_event['name'] == collect:
                 self.values.append(value)
+                batch_delay += value
                 i += 1
+        return batch_delay / batch_size
 
-    def confidence_interval(
-            self,
-            start: int=0
-            ) -> tuple[float, tuple[float, float]]:
+    def confidence_interval(self) -> tuple[float, tuple[float, float]]:
         """
         Compute the confidence interval of the mean value
         of the collected metric, from the 'start' value.
         IN:
-            - start: the index of the starting point for computing
-                     confidence interval
+            - None
         OUT:
             - the mean value
             - the confidence interval
         """
-        values = np.array(self.values)[start:]
+        values = np.array(self.batch_mean_delays)
         n = len(values)
         mean = np.mean(values)
         std = np.std(values, ddof=1)/np.sqrt(n)
@@ -227,7 +227,7 @@ class QueueSimulator:
         else:
             return mean, norm.interval(self.confidence, mean, std)
 
-    def update_cumulative_means(self, start: int=0) -> None:
+    def update_cumulative_means(self) -> None:
         """
         Update the cumulative mean array of the collected metric.
         IN:
@@ -240,7 +240,7 @@ class QueueSimulator:
               set equal to the transient end moment to have valuable
               results.
         """
-        values = np.array(self.values)[start:]
+        values = np.array(self.values)
         self.cumulative_means = Series(data=values)\
                                     .expanding()\
                                     .mean()\
@@ -276,14 +276,17 @@ class QueueSimulator:
         print(f'Collected {n} batches for removing transient')
         # collecting the first 10 batches
         n = 0
+        self.batch_mean_delays = list()
         while n<10:
-            self.collect_batch(collect=collect)
+            batch_mean = self.collect_batch(collect=collect)
+            self.batch_mean_delays.append(batch_mean)
             n += 1
-        mean, conf_int = self.confidence_interval(start=self.transient_end)
-        while np.abs(conf_int[0]-conf_int[1])/mean > 1-self.confidence:
-            self.collect_batch(collect=collect)
-            mean, conf_int = self.confidence_interval(start=self.transient_end)
+        mean, conf_int = self.confidence_interval()
+        while np.abs(conf_int[0]-conf_int[1])/mean > self.accuracy:
+            batch_mean = self.collect_batch(collect=collect)
+            self.batch_mean_delays.append(batch_mean)
+            mean, conf_int = self.confidence_interval()
             n += 1
-        self.update_cumulative_means(start=0)
+        self.update_cumulative_means()
         print(f'Collected other {n} batches')
         return mean, conf_int

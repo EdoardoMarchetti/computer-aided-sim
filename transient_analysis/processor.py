@@ -24,7 +24,7 @@ def main(args):
     service_distributions = (args.service_distribution, ) \
         if args.service_distribution is not None else \
             ('exp', 'det', 'hyp', )
-    seed_generator = SeedGenerator(seed=args.seed)
+    generate_seed = SeedGenerator(seed=args.seed)
     for service_distribution in service_distributions:
         mean = np.empty(shape=(len(utilisations)), dtype=np.float64)
         left_conf_int = np.empty_like(mean)
@@ -38,8 +38,8 @@ def main(args):
                 transient_batch_size=args.transient_batch_size,
                 transient_tolerance=args.transient_tolerance,
                 confidence=args.confidence,
-                seed=seed_generator(),
-                verbose=args.verbose
+                accuracy=args.accuracy,
+                seed=generate_seed()
             )
             print(sim)
             mean[i], (left_conf_int[i], right_conf_int[i]) = \
@@ -61,7 +61,7 @@ def main(args):
                 y2=right_conf_int,
                 color='lightblue'
                 )
-        ax.legend(('Mean delay', f'{args.confidence} confidence interval'))
+        ax.legend(('Batch mean delay', f'{args.confidence} confidence interval'))
         ax.set_xticks(utilisations_plot)
         ax.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
         ax.set_xlabel('Server utilisation level (%)')
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--transient_batch_size',
         type=int,
-        default=100,
+        default=1000,
         help='Batch size for identifying the transient state.'
     )
     parser.add_argument(
@@ -109,15 +109,15 @@ if __name__ == '__main__':
         help='Confidence interval (default .95).'
     )
     parser.add_argument(
+        '--accuracy',
+        type=float,
+        default=0.2,
+        help='Accuracy level to be reached.'
+    )
+    parser.add_argument(
         '--seed',
         type=int,
         default=42,
         help='The seed for the random generator.'
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='Use this flag to print informations\
-            during the simulation.'
     )
     main(parser.parse_args())
