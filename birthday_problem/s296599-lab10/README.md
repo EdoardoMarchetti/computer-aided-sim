@@ -15,9 +15,7 @@ average size of the population to have at least one collision,
 while with "second problem" we mean the computation of the collision
 probability against an arbitrary number of m values (population size).
 
-To obtain the exact same results of the report please use the following commands.
-
-```python processor.py --k1 100000 --k2 1000 --start 2 --stop 100 --step 1 --distribution uniform --confidence 0.99 --seed 42```
+To obtain the exact same results of the report please use the following command.
 
 ```python processor.py --k1 100000 --k2 1000 --start 2 --stop 100 --step 1 --distribution realistic --confidence 0.99 --seed 42```
 

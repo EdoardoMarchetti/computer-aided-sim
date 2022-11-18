@@ -4,7 +4,6 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 import scipy.stats
-import atexit
 
 
 class SeedGenerator:
@@ -48,12 +47,12 @@ def problem1(args, seed_generator: SeedGenerator) -> None:
     _, ax = plt.subplots(1, 1, figsize=(8,8))
     ax.bar(values, counts)
     ax.axvline(x=max_value, color='red')
-    ax.set_title(f'Estimated PDF of the number of people needed to have a birthday collision\ndistribution: {args.distribution}')
+    ax.set_title('Estimated PDF of the number of people needed to have a birthday collision')
     ax.set_xlabel('Population size [m]')
     ax.set_ylabel('P(X=m)')
     _, ax = plt.subplots(1, 1, figsize=(8,8))
     ax.plot(np.cumsum(counts))
-    ax.set_title(f'Estimated CDF of the number of people needed to have a birthday collision\ndistribution: {args.distribution}')
+    ax.set_title('Estimated CDF of the number of people needed to have a birthday collision')
     ax.set_xlabel('Population size [m]')
     ax.set_ylabel('P(X<m)')
 
@@ -99,21 +98,19 @@ def problem2(args, seed_generator: SeedGenerator) -> None:
         ['estimated probability', 'theoretical limit', f'{args.confidence} confidence interval'],
         loc='lower right'
         )
-    ax.set_title(f'Probability of a collision w.r.t. size of the population\ndistribution: {args.distribution}')
+    ax.set_title('Probability of a collision w.r.t. size of the population')
     ax.set_xlabel('Size of the population [m]')
     ax.set_ylabel('Probability of birthday collision')
 
 
 def main(args):
-    atexit.register(lambda: plt.close('all'))
     seed_generator = SeedGenerator(
         seed=args.seed,
         k = max(args.k1, args.k2)
     )
     problem1(args, seed_generator)
     problem2(args, seed_generator)
-    plt.show(block=False)
-    input('Press enter to close all the figures')
+    plt.show()
 
 
 if __name__ == '__main__':
