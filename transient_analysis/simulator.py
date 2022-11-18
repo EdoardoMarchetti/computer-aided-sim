@@ -23,7 +23,8 @@ class QueueSimulator:
             self,
             p: np.float128,
             mu1: np.float128,
-            mu2: np.float128) -> np.float128:
+            mu2: np.float128
+    ) -> np.float128:
         exp1 = lambda: self.generator.exponential(mu1)
         exp2 = lambda: self.generator.exponential(mu2)
         u = self.generator.uniform()
@@ -69,7 +70,7 @@ class QueueSimulator:
                 self.hyperexponential2(
                     p=0.9,
                     mu1=1-1/np.sqrt(2),
-                    mu2=9/np.sqrt(2)+1
+                    mu2=1+9/np.sqrt(2)
                 )
         else:
             raise Exception(

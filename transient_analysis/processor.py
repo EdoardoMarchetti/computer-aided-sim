@@ -45,14 +45,15 @@ def main(args):
             print(sim)
             mean[i], (left_conf_int[i], right_conf_int[i]) = \
                  sim.exec(collect='departure')
-            _, _ax = plt.subplots(1, 1, figsize=(8, 8))
-            _ax.plot(sim.delays, color='lightblue')
-            _ax.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
-            _ax.axvline(x=sim.transient_end, color='red', linestyle='dashed', linewidth=2)
-            _ax.legend(('Delay', 'Mean delay', 'Transient end'))
-            _ax.set_title(f'Delay\nutilisation: {utilisation}\nservice_distribution: {service_distribution}')
-            _ax.set_xlabel('Time')
-            _ax.set_ylabel('Delay')
+            if utilisation == 0.95:
+                _, _ax = plt.subplots(1, 1, figsize=(8, 8))
+                _ax.plot(sim.delays, color='lightblue')
+                _ax.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
+                _ax.axvline(x=sim.transient_end, color='red', linestyle='dashed', linewidth=2)
+                _ax.legend(('Delay', 'Cumulative mean delay', 'Transient end'))
+                _ax.set_title(f'Delay\nutilisation: {utilisation}\nservice_distribution: {service_distribution}')
+                _ax.set_xlabel('Time')
+                _ax.set_ylabel('Delay')
         # end for
         ax.scatter(
             x=utilisations_plot,
