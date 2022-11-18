@@ -3,6 +3,7 @@ import argparse
 from matplotlib import pyplot as plt
 import numpy as np
 import atexit
+from tqdm import tqdm
 
 
 class SeedGenerator:
@@ -22,15 +23,19 @@ def main(args):
     atexit.register(lambda: plt.close('all'))
     if args.transient_batch_size is None:
         args.transient_batch_size = args.steady_batch_size
-    utilisations = (0.1, 0.2, 0.4, 0.7, 0.8, 0.9, 0.95, 0.99, )
-    utilisations_plot = 100*np.array(utilisations)
+    utilisations = np.array((0.1, 0.2, 0.4, 0.7, 0.8, 0.9, 0.95, 0.99, ))
+    utilisations_plot = 100*utilisations
     generate_seed = SeedGenerator(seed=args.seed)
-    _, ax = plt.subplots(1, 1, figsize=(8,8))
+    transient_batches = np.empty_like(utilisations)
+    steady_batches = np.empty_like(utilisations)
+    _, mean_plot = plt.subplots(1, 1, figsize=(8,8))
+    _, batch_plot = plt.subplots(1, 1, figsize=(8,8))
     for service_distribution in ('exp', 'det', 'hyp', ):
+        print(service_distribution)
         mean = np.empty(shape=(len(utilisations)), dtype=np.float64)
         left_conf_int = np.empty_like(mean)
         right_conf_int = np.empty_like(mean)
-        for i in range(len(utilisations)):
+        for i in tqdm(range(len(utilisations))):
             utilisation = utilisations[i]
             sim = QueueSimulator(
                 utilisation=utilisation,
@@ -42,42 +47,53 @@ def main(args):
                 accuracy=args.accuracy,
                 seed=generate_seed()
             )
-            print(sim)
-            mean[i], (left_conf_int[i], right_conf_int[i]) = \
-                 sim.exec(collect='departure')
+            mean[i], \
+            (left_conf_int[i], right_conf_int[i]), \
+            transient_batches[i],\
+            steady_batches[i] = \
+                sim.exec(collect='departure')
             if utilisation == 0.95:
-                _, _ax = plt.subplots(1, 1, figsize=(8, 8))
-                _ax.plot(sim.delays, color='lightblue')
-                _ax.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
-                _ax.axvline(x=sim.transient_end, color='red', linestyle='dashed', linewidth=2)
-                _ax.legend(('Delay', 'Cumulative mean delay', 'Transient end'))
-                _ax.set_title(f'Delay\nutilisation: {utilisation}\nservice_distribution: {service_distribution}')
-                _ax.set_xlabel('Time')
-                _ax.set_ylabel('Delay')
+                _, delay_plot = plt.subplots(1, 1, figsize=(8, 8))
+                delay_plot.plot(sim.delays, color='lightblue')
+                delay_plot.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
+                delay_plot.axvline(x=sim.transient_end, color='red', linestyle='dashed', linewidth=2)
+                delay_plot.legend(('Delay', 'Cumulative mean delay', 'Transient end'))
+                delay_plot.set_title(f'Delay\nutilisation: {utilisation}\nservice_distribution: {service_distribution}')
+                delay_plot.set_xlabel('Time')
+                delay_plot.set_ylabel('Delay')
         # end for
-        ax.scatter(
+        batch_plot.plot(utilisations, steady_batches, marker='.')
+        mean_plot.scatter(
             x=utilisations_plot,
             y=mean,
             marker=MARKERS[service_distribution],
             color='black',
             zorder=2
             )
-        ax.fill_between(
+        mean_plot.fill_between(
                 x=utilisations_plot,
                 y1=left_conf_int,
                 y2=right_conf_int,
                 zorder=1
                 )
     # end for
-    ax.legend((
+    mean_plot.legend((
         'Mean delay exponential', f'{args.confidence} confidence interval exponential',
         'Mean delay deterministic', f'{args.confidence} confidence interval deterministic',
         'Mean delay hyperexponential2', f'{args.confidence} confidence interval hyperexponential2',
         ))
-    ax.set_xticks(utilisations_plot)
-    ax.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
-    ax.set_xlabel('Server utilisation level (%)')
-    ax.set_ylabel('Mean delay')
+    mean_plot.set_xticks(utilisations_plot)
+    mean_plot.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
+    mean_plot.set_xlabel('Server utilisation level (%)')
+    mean_plot.set_ylabel('Mean delay')
+    batch_plot.legend((
+        'Steady batches exp distribution',
+        'Steady batches det distribution',
+        'Steady batches hyp distribution',
+    ))
+    batch_plot.set_title('Number of batches needed for the simulation')
+    batch_plot.set_xlabel('Server utilisation level')
+    batch_plot.set_ylabel('Number of batches')
     plt.show(block=False)
     input('\nPress enter to close all the figures')
 

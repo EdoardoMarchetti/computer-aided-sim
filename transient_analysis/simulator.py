@@ -263,31 +263,29 @@ class QueueSimulator:
         """
         # removing transient state
         self.values = list()
-        n = 0
+        transient_n = 0
         while self.transient == True:
             self.collect_batch(collect=collect)
-            n += 1
+            transient_n += 1
             self.update_cumulative_means()
             if len(self.cumulative_means) > 1:
                 relative_diff = np.abs(self.cumulative_means[-1] \
                     - self.cumulative_means[-2]) / self.cumulative_means[-2]
                 if relative_diff < self.transient_tolerance:
                     self.transient = False
-                    self.transient_end = n*self.transient_batch_size
-        print(f'Collected {n} batches for removing transient')
+                    self.transient_end = transient_n*self.transient_batch_size
         # collecting the first 10 batches
-        n = 0
+        steady_n = 0
         self.batch_mean_delays = list()
-        while n<10:
+        while steady_n<10:
             batch_mean = self.collect_batch(collect=collect)
             self.batch_mean_delays.append(batch_mean)
-            n += 1
+            steady_n += 1
         mean, conf_int = self.confidence_interval()
         while np.abs(conf_int[0]-conf_int[1])/mean > self.accuracy:
             batch_mean = self.collect_batch(collect=collect)
             self.batch_mean_delays.append(batch_mean)
             mean, conf_int = self.confidence_interval()
-            n += 1
+            steady_n += 1
         self.update_cumulative_means()
-        print(f'Collected other {n} batches')
-        return mean, conf_int
+        return mean, conf_int, transient_n, steady_n
