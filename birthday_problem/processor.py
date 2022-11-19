@@ -36,6 +36,9 @@ def problem1(args, seed_generator: SeedGenerator) -> None:
     )
     avg_value = simulator.exec_sim_1()
     print(f'The average size of samples to have a collision is: {avg_value}')
+    avg_theory = 1.25*np.sqrt(365)
+    relative_error = np.abs(avg_value - avg_theory) / avg_theory
+    print(f'PROBLEM 1: relative error is {relative_error}')
     conf_int = scipy.stats.norm.interval(
         args.confidence,
         avg_value,
@@ -86,6 +89,8 @@ def problem2(args, seed_generator: SeedGenerator) -> None:
         lower_conf_int[i] = p - z*s_hat
         upper_conf_int[i] = p + z*s_hat
         limit[i] = 1 - np.exp(-m**2/730)
+    mse = np.sum(np.power(estimated_prob - limit, 2)) / args.k2
+    print(f'PROBLEM 2: MSE is {mse}')
     _, ax = plt.subplots(1, 1, figsize=(8,8))
     ax.plot(m_values, estimated_prob, color='red', marker='.')
     ax.plot(m_values, limit, color='black', linestyle='dashed')
