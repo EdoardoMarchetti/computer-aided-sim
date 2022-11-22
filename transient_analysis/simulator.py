@@ -28,7 +28,19 @@ class QueueSimulator:
         exp1 = lambda: self.generator.exponential(mu1)
         exp2 = lambda: self.generator.exponential(mu2)
         u = self.generator.uniform()
-        return exp1() if u < p else exp2()
+        return exp1() if u<p else exp2()
+    
+    def get_distribution(self, distribution: str):
+        DISTRIBUTIONS = {
+            'exp': lambda: self.generator.exponential(1),
+            'det': lambda: 1,
+            'hyp': lambda: self.hyperexponential2(
+                                p=0.99,
+                                mu1=1-1/np.sqrt(2),
+                                mu2=(2+99*np.sqrt(2))/2
+                                )
+            }
+        return DISTRIBUTIONS[distribution]
 
     def __init__(
             self,
@@ -41,7 +53,7 @@ class QueueSimulator:
             accuracy: float,
             seed: int):
         """
-        
+        to-do
         """
         self.users = 0
         self.time = 0
@@ -60,23 +72,7 @@ class QueueSimulator:
         self.service_distribution_str = service_distribution
         self.inter_arrival_distribution = lambda: \
             self.generator.exponential(1/self.utilisation)
-        if service_distribution == 'exp':
-            self.service_distribution = lambda: \
-                self.generator.exponential(1)
-        elif service_distribution == 'det':
-            self.service_distribution = lambda: 1
-        elif service_distribution == 'hyp':
-            self.service_distribution = lambda: \
-                self.hyperexponential2(
-                    p=0.9,
-                    mu1=1-1/np.sqrt(2),
-                    mu2=1+9/np.sqrt(2)
-                )
-        else:
-            raise Exception(
-                f'{service_distribution} \
-                    distribution is not implemented.'
-                )
+        self.service_distribution = self.get_distribution(service_distribution)
         # scheduling the first arrival
         self.schedule_arrival()
 

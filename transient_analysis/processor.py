@@ -83,7 +83,7 @@ def main(args):
         'Mean delay hyperexponential2', f'{args.confidence} confidence interval hyperexponential2',
         ))
     mean_plot.set_xticks(utilisations_plot)
-    mean_plot.set_title(f'Mean delay in function of the server utilisation\ndistribution: {service_distribution}')
+    mean_plot.set_title('Mean delay in function of the server utilisation')
     mean_plot.set_xlabel('Server utilisation level (%)')
     mean_plot.set_ylabel('Mean delay')
     batch_plot.legend((
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--accuracy',
         type=float,
-        default=0.4,
+        default=0.2,
         help='Accuracy level to be reached.'
     )
     parser.add_argument(
