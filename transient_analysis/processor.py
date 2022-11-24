@@ -52,7 +52,7 @@ def main(args):
             transient_batches[i],\
             steady_batches[i] = \
                 sim.exec(collect='departure')
-            if utilisation == 0.95:
+            if utilisation == 0.8:
                 _, delay_plot = plt.subplots(1, 1, figsize=(8, 8))
                 delay_plot.plot(sim.delays, color='lightblue')
                 delay_plot.plot(sim.cumulative_means, linestyle='dotted', linewidth=4)
