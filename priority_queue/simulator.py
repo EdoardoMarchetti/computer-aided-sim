@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Callable
-from client_management import Client, ClientQueue
+from client_management import Client, ClientPriorityQueue
 
 
 class MultiServerSimulator:
