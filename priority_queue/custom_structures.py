@@ -4,12 +4,16 @@ import numpy as np
 class Client:
     def __init__(
             self,
-            type: str,
+            id: int,
+            priority: bool,
             arrival_time: float,
-            service_time: float):
-        self.type = type
+            service_time: float,
+            start_service_time: float = None):
+        self.id = id
+        self.priority = priority
         self.arrival_time = arrival_time
         self.service_time = service_time
+        self.start_service_time = start_service_time
 
     def get_delay(
             self,
@@ -150,4 +154,38 @@ class ClientPriorityQueue:
                 )
             self.low_priority_size -= 1
         self.size -= 1
+        return client
+
+
+class MultiServer:
+
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.server = np.empty(shape=(capacity,), dtype=Client)
+        self.size = 0
+
+    def is_available(self) -> bool:
+        return self.size < self.capacity
+
+    def submit(self, client: Client) -> bool:
+        if self.is_available():
+            self.server[self.size] = client
+            self.size += 1
+            return True
+        return False
+
+    def remove_latest_lp(self) -> Client:
+        max_i = 0
+        max_arrival = -1
+        max_client = None
+        for i, client in enumerate(self.server):
+            if not client.priority \
+            and client.arrival_time > max_arrival:
+                max_i = i
+                max_arrival = client.arrival_time
+                max_client = client
+        if max_client is not None:
+            client = self.server[max_i]
+            self.size -= 1
+            self.server[max_i] = self.server[self.size]
         return client
