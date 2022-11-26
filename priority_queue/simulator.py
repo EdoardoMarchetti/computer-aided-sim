@@ -129,3 +129,6 @@ class MultiServerSimulator:
 
     def departure(self):
         pass
+    
+    def execute(self):
+        pass

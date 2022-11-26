@@ -83,6 +83,7 @@ class ClientPriorityQueue:
                      False to push in the back.
         OUT: True iff the client was successfully pushed.
         """
+        increment = self.size < self.capacity
         if self.size < self.capacity or force is True:
             if front:
                 self.low_priority_queue = np.roll(
@@ -92,9 +93,8 @@ class ClientPriorityQueue:
                 self.low_priority_queue[0] = client
             else:
                 self.low_priority_queue[self.low_priority_size] = client
-            if not force:
-                self.low_priority_size += 1
-                self.size += 1
+            self.low_priority_size += increment
+            self.size += increment
             return True
         return False
 
