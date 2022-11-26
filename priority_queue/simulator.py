@@ -2,15 +2,16 @@ import numpy as np
 from typing import Callable
 from custom_structures import \
     Client, ClientPriorityQueue, MultiServer
+import math
 
 
 class MultiServerSimulator:
-
+    
     def hyperexponential2(
             self,
-            p: np.float128,
-            mu1: np.float128,
-            mu2: np.float128) -> np.float128:
+            p: float,
+            mu1: float,
+            mu2: float) -> float:
         exp1 = lambda: self.generator.exponential(mu1)
         exp2 = lambda: self.generator.exponential(mu2)
         u = self.generator.uniform()
@@ -22,8 +23,8 @@ class MultiServerSimulator:
             'det': lambda: 1,
             'hyp': lambda: self.hyperexponential2(
                 p=0.99,
-                mu1=1-1/np.sqrt(2),
-                mu2=(2+99*np.sqrt(2))/2
+                mu1=1-1/math.sqrt(2),
+                mu2=(2+99*math.sqrt(2))/2
                 )
             }
         return DISTRIBUTIONS[type]
@@ -45,7 +46,9 @@ class MultiServerSimulator:
             self.generator.exponential(1/inter_arrival_hp_lambda) \
             if priority == True else self.generator.exponential(1/inter_arrival_lp_lambda)
         self.fes = list()
-        self.discarded_departures = set()
+        # to_skip_departures' size will be at maximum
+        # equal to the number of servers
+        self.to_skip_departures = set()
         self.n_servers = n_servers
         self.time = 0
         self.next_id = 0
@@ -59,7 +62,7 @@ class MultiServerSimulator:
     def schedule_event(
             self,
             time: float,
-            name: float,
+            name: str,
             action: Callable,
             client_id: int):
         self.fes.append({
@@ -93,14 +96,15 @@ class MultiServerSimulator:
             id=client_id,
             priority=priority,
             arrival_time=self.time,
-            service_time=service_time
+            service_time=service_time,
+            start_service_time=-1
         )
         self.queue.append(client)
         if self.servers.is_available():
             client.start_service_time = self.time
             self.servers.submit(client)
-            self.schedule_departure(client_id=id)
-        elif priority:
+            self.schedule_departure(client=client)
+        elif priority is True:
         # liberare un server
             # selezionare il cliente in esecuzione con low priority e con tempo arrivo massimo
             # rimuoverlo dal server
@@ -108,17 +112,20 @@ class MultiServerSimulator:
             # aggiornare service time cliente rimosso
             # inserirlo in fronte alla coda di clienti
             # inserire id cliente nel set di departure da skippare
-            lp_client = self.servers.remove_latest_lp()
-            if lp_client is not None:
-                client.start_service_time = self.time
-                self.servers.submit(client)
-                residual_service_time = self.time - lp_client.start_service_time
-                lp_client.service_time = residual_service_time
-                self.queue.push_low_priority(
-                    client=lp_client,
-                    front=True
-                    )
-                self.discarded_departures.add(lp_client.id)
+            try:
+                lp_client = self.servers.remove_latest_lp()
+            except MultiServer.OnlyHighPriorityException:
+                return
+            client.start_service_time = self.time
+            self.servers.submit(client)
+            residual_service_time = self.time - lp_client.start_service_time
+            lp_client.service_time = residual_service_time
+            self.queue.push_low_priority(
+                client=lp_client,
+                front=True,
+                force=True
+                )
+            self.to_skip_departures.add(lp_client.id)
 
     def departure(self):
         pass

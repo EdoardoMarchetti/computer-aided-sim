@@ -8,7 +8,7 @@ class Client:
             priority: bool,
             arrival_time: float,
             service_time: float,
-            start_service_time: float = None):
+            start_service_time: float):
         self.id = id
         self.priority = priority
         self.arrival_time = arrival_time
@@ -73,7 +73,8 @@ class ClientPriorityQueue:
     def push_low_priority(
             self,
             client: Client,
-            front: bool) -> bool:
+            front: bool,
+            force: bool = False) -> bool:
         """
         Push a new client in the low priority queue.
         IN:
@@ -82,7 +83,7 @@ class ClientPriorityQueue:
                      False to push in the back.
         OUT: True iff the client was successfully pushed.
         """
-        if self.size < self.capacity:
+        if self.size < self.capacity or force is True:
             if front:
                 self.low_priority_queue = np.roll(
                     a=self.low_priority_queue,
@@ -91,8 +92,9 @@ class ClientPriorityQueue:
                 self.low_priority_queue[0] = client
             else:
                 self.low_priority_queue[self.low_priority_size] = client
-            self.low_priority_size += 1
-            self.size += 1
+            if not force:
+                self.low_priority_size += 1
+                self.size += 1
             return True
         return False
 
@@ -104,13 +106,12 @@ class ClientPriorityQueue:
         Returns True iff the client was successfully pushed.
         """
         action = self.push_high_priority \
-            if client.type == 'hp' else self.push_low_priority
+            if client.priority is True else self.push_low_priority
         return action(client=client, front=False)
     
     def pop(self) -> Client:
         """
-        Remove the first customer with highest priority.
-        Returns True iff the client was successfully pushed.
+        Removes and returns the first customer with highest priority.
         """
         priority = self.high_priority_size > 0
         return self.pop_front(priority=priority)
@@ -159,6 +160,9 @@ class ClientPriorityQueue:
 
 class MultiServer:
 
+    class OnlyHighPriorityException(Exception):
+        pass
+
     def __init__(self, capacity: int):
         self.capacity = capacity
         self.server = np.empty(shape=(capacity,), dtype=Client)
@@ -177,15 +181,15 @@ class MultiServer:
     def remove_latest_lp(self) -> Client:
         max_i = 0
         max_arrival = -1
-        max_client = None
-        for i, client in enumerate(self.server):
-            if not client.priority \
+        for i in range(self.size):
+            client: Client = self.server[i]
+            if client.priority == False \
             and client.arrival_time > max_arrival:
-                max_i = i
                 max_arrival = client.arrival_time
-                max_client = client
-        if max_client is not None:
-            client = self.server[max_i]
-            self.size -= 1
-            self.server[max_i] = self.server[self.size]
-        return client
+                max_i = i
+        if max_arrival < 0:
+            raise self.OnlyHighPriorityException()
+        max_client: Client = self.server[max_i]
+        self.size -= 1
+        self.server[max_i] = self.server[self.size]
+        return max_client
