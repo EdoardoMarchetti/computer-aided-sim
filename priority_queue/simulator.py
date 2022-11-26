@@ -98,15 +98,16 @@ class MultiServerSimulator:
             service_time=service_time,
             start_service_time=-1
         )
-        queued, _ = self.queue.append(client)
-        if queued:
+        self.queue.append(client)
+        if self.servers.is_available():
+            client = self.queue.pop()
             client.start_service_time = self.time
             submitted, removed_low_priority = self.servers.append(client)
             if submitted:
                 self.schedule_departure(client=client)
                 if removed_low_priority is not None:
-                    residual_service_time = self.time - removed_low_priority.start_service_time
-                    removed_low_priority.service_time = residual_service_time
+                    removed_low_priority.service_time = \
+                        self.time - removed_low_priority.start_service_time
                     rescheduled, _ = self.queue.append(
                         client=removed_low_priority,
                         front=True,
