@@ -35,10 +35,12 @@ class MultiServerSimulator:
             service_time: str,
             inter_arrival_lp_lambda: float,
             inter_arrival_hp_lambda: float,
+            endtime: int,
             seed: int):
         self.generator = np.random.default_rng(seed=seed)
         self.queue = ClientPriorityQueue(capacity=queue_size)
         self.servers = ClientPriorityQueue(capacity=n_servers)
+        self.endtime = endtime
         self.service_time = \
             self.get_service_time_distribution(service_time)
         self.inter_arrival = lambda priority: \
@@ -63,29 +65,36 @@ class MultiServerSimulator:
             time: float,
             name: str,
             action: Callable,
-            client_id: int):
+            client: Client) -> None:
         self.fes.append({
             'time': time,
             'action': action,
             'name': name,
-            'client_id': client_id
+            'client': client
             })
         
-    def schedule_arrival(self, priority: bool):
-        client_id = self.__get_next_id__()
+    def schedule_arrival(self, priority: bool) -> None:
+        client = Client(
+            id=self.__get_next_id__(),
+            priority=priority,
+            arrival_time=self.time + self.inter_arrival(priority=priority),
+            service_time=self.service_time(),
+            start_service_time=-1
+            )
+         
         self.schedule_event(
-            time = self.time + self.inter_arrival(priority=priority),
+            time = client.arrival_time,
             name = 'arrival_hp' if priority == True else 'arrival_lp',
-            action = lambda: self.arrival(priority=priority, client_id=client_id),
-            client_id = client_id
+            action = lambda: self.arrival(priority=priority, client_id=client.id),
+            client = client
             )
 
-    def schedule_departure(self, client: Client):
+    def schedule_departure(self, client: Client) -> None:
         self.schedule_event(
             time = self.time + client.service_time,
             name = 'departure',
-            action = self.departure,
-            client_id = client.id
+            action = lambda: self.departure(client.id),
+            client = client
         )
 
     def arrival(self, priority: bool, client_id: int) -> None:
@@ -104,7 +113,7 @@ class MultiServerSimulator:
             client.start_service_time = self.time
             submitted, removed_low_priority = self.servers.append(client)
             if submitted:
-                self.schedule_departure(client=client)
+                self.schedule_departure(client)
                 if removed_low_priority is not None:
                     removed_low_priority.service_time = \
                         self.time - removed_low_priority.start_service_time
@@ -116,8 +125,27 @@ class MultiServerSimulator:
                     if rescheduled:
                         self.to_skip_departures.add(removed_low_priority.id)
 
-    def departure(self):
-        client = self.servers.pop()
-    
+    def departure(self, client_id: int) -> None:
+        if client_id in self.to_skip_departures:
+            self.to_skip_departures.remove(client_id)
+            return
+        client = self.servers.find_client(client_id)
+        if client is not None:
+            client, position = client
+            self.servers.pop_specific_client(
+                position=position,
+                priority=client.priority
+                )
+            if not self.queue.is_empty():
+                next_client = self.queue.pop()
+                self.servers.append(next_client)
+                self.schedule_departure(next_client)
+        else:
+            raise Exception('Performing departure on None')
+            
     def execute(self):
-        pass
+        while self.time < self.endtime:
+            self.fes.sort(key=lambda x: x['time'], reverse=True)
+            next_event = self.fes.pop()
+            self.time = next_event['time']
+            next_event['action']()

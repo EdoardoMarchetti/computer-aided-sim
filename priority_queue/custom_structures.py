@@ -60,6 +60,39 @@ class ClientPriorityQueue:
             high = high + str(c) + ' '
         return 'low: ' + low + '\nhigh: ' + high
 
+    def is_empty(self) -> bool:
+        return self.size == 0
+
+    def find_client(
+            self,
+            client_id: int) -> tuple[Client, int]|None:
+        for priority in (True, False):
+            queue_size = self.high_priority_size if priority \
+                else self.low_priority_size
+            queue = self.high_priority_queue if priority \
+                else self.low_priority_queue
+            for i in range(queue_size):
+                c: Client = queue[i]
+                if c.id == client_id:
+                    return c, i
+
+    def pop_specific_client(
+            self,
+            position: int,
+            priority: bool) -> Client:
+        queue_size = self.high_priority_size if priority \
+            else self.low_priority_size
+        queue = self.high_priority_queue if priority \
+            else self.low_priority_queue
+        client: Client = queue[position]
+        queue[position] = queue[queue_size-1]
+        self.size -= 1
+        if priority:
+            self.high_priority_size -= 1
+        else:
+            self.low_priority_size -= 1
+        return client
+
     def is_available(self) -> bool:
         return self.size < self.capacity
 
