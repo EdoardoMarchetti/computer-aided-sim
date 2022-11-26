@@ -88,7 +88,7 @@ class MultiServerSimulator:
             client_id = client.id
         )
 
-    def arrival(self, priority: bool, client_id: int):
+    def arrival(self, priority: bool, client_id: int) -> None:
         self.schedule_arrival(priority=priority)
         service_time = self.service_time()
         client = Client(
@@ -117,7 +117,7 @@ class MultiServerSimulator:
                         self.to_skip_departures.add(removed_low_priority.id)
 
     def departure(self):
-        pass
+        client = self.servers.pop()
     
     def execute(self):
         pass

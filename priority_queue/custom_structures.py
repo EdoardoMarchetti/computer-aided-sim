@@ -70,10 +70,10 @@ class ClientPriorityQueue:
         IN: front: true pop from the front, false pop from the back
         OUT: the oldest client with highest priority.
         """
-        pop_high = self.pop_front_high_priority if front \
-            else self.pop_back_high_priority
-        pop_low = self.pop_front_low_priority if front \
-            else self.pop_back_low_priority
+        pop_high = self.__pop_front_high_priority__ if front \
+            else self.__pop_back_high_priority__
+        pop_low = self.__pop_front_low_priority__ if front \
+            else self.__pop_back_low_priority__
         if self.size == 0:
             raise self.PriorityQueueException('No client in the queue')
         try:
@@ -106,14 +106,14 @@ class ClientPriorityQueue:
         """
         increment = int(self.size < self.capacity)
         removed_low_priority = None
-        push_low_priority = self.push_front_low_priority if front \
-            else self.push_back_low_priority
-        push_high_priority = self.push_front_high_priority if front \
-            else self.push_back_high_priority
+        push_low_priority = self.__push_front_low_priority__ if front \
+            else self.__push_back_low_priority__
+        push_high_priority = self.__push_front_high_priority__ if front \
+            else self.__push_back_high_priority__
         if client.priority:
             if self.size == self.capacity:
                 try:
-                    removed_low_priority = self.pop_back_low_priority()
+                    removed_low_priority = self.__pop_back_low_priority__()
                     push_high_priority(client, force)
                     inserted = True
                 except self.PriorityQueueException:
@@ -123,7 +123,7 @@ class ClientPriorityQueue:
                     except self.PriorityQueueException:
                         inserted = False
             else:
-                self.push_front_high_priority(client, force)
+                self.__push_front_high_priority__(client, force)
                 inserted = True
         else:
             if self.high_priority_size == self.capacity:
@@ -137,19 +137,19 @@ class ClientPriorityQueue:
         self.size += increment
         return inserted, removed_low_priority
 
-    def roll_high_priority(self, shift: int) -> None:
+    def __roll_high_priority__(self, shift: int) -> None:
         self.high_priority_queue = np.roll(
             a=self.high_priority_queue,
             shift=shift
         )
     
-    def roll_low_priority(self, shift: int) -> None:
+    def __roll_low_priority__(self, shift: int) -> None:
         self.low_priority_queue = np.roll(
             a=self.low_priority_queue,
             shift=shift
         )
 
-    def pop_front_high_priority(self) -> Client:
+    def __pop_front_high_priority__(self) -> Client:
         """
         Return the oldest client with high priority if exists,
         otherwise raise an exception.
@@ -159,11 +159,11 @@ class ClientPriorityQueue:
         if self.high_priority_size == 0:
             raise self.PriorityQueueException('No high priority client in the queue.')
         client = self.high_priority_queue[0]
-        self.roll_high_priority(-1)
+        self.__roll_high_priority__(-1)
         self.high_priority_size -= 1
         return client
 
-    def pop_front_low_priority(self) -> Client:
+    def __pop_front_low_priority__(self) -> Client:
         """
         Return the oldest client with low priority if exists,
         otherwise raise an exception.
@@ -173,11 +173,11 @@ class ClientPriorityQueue:
         if self.low_priority_size == 0:
             raise self.PriorityQueueException('No low priority client in the queue.')
         client = self.low_priority_queue[0]
-        self.roll_low_priority(-1)
+        self.__roll_low_priority__(-1)
         self.low_priority_size -= 1
         return client
 
-    def pop_back_high_priority(self) -> Client:
+    def __pop_back_high_priority__(self) -> Client:
         """
         Return the youngest client with high priority, if exists
         otherwise raise an exception
@@ -189,7 +189,7 @@ class ClientPriorityQueue:
         self.high_priority_size -= 1
         return self.high_priority_queue[self.high_priority_size]
 
-    def pop_back_low_priority(self) -> Client:
+    def __pop_back_low_priority__(self) -> Client:
         """
         Return the youngest client with low priority, if exists
         otherwise raise an exception
@@ -201,23 +201,7 @@ class ClientPriorityQueue:
         self.low_priority_size -= 1
         return self.low_priority_queue[self.low_priority_size]
 
-    def pop_back(self) -> Client:
-        """
-        Return the youngest client with lowest prioriy, if exists
-            otherwise raise an exception
-        IN: None
-        OUT: the youngest client with lowest priority
-        """
-        if self.size == 0:
-            raise self.PriorityQueueException('No client in the queue')
-        try:
-            client = self.pop_back_low_priority()
-        except self.PriorityQueueException:
-            client = self.pop_back_high_priority()
-        self.size -= 1
-        return client
-
-    def push_back_low_priority(
+    def __push_back_low_priority__(
             self,
             client: Client,
             force: bool) -> None:
@@ -243,7 +227,7 @@ class ClientPriorityQueue:
             self.low_priority_queue[self.low_priority_size] = client
             self.low_priority_size += 1
 
-    def push_back_high_priority(
+    def __push_back_high_priority__(
             self,
             client: Client,
             force: bool) -> None:
@@ -264,7 +248,7 @@ class ClientPriorityQueue:
             raise Exception('Illegal operaton')
         if self.high_priority_size == self.capacity:
             try:
-                self.pop_back_low_priority()
+                self.__pop_back_low_priority__()
             except self.PriorityQueueException:
                 if force:
                     self.high_priority_queue[self.high_priority_size-1] = client
@@ -274,7 +258,7 @@ class ClientPriorityQueue:
             self.high_priority_queue[self.high_priority_size] = client
             self.high_priority_size += 1
 
-    def push_front_low_priority(
+    def __push_front_low_priority__(
             self,
             client: Client,
             force: bool) -> None:
@@ -291,16 +275,16 @@ class ClientPriorityQueue:
             raise Exception('Illegal operaton')
         if self.low_priority_size == self.capacity:
             if force:
-                self.roll_low_priority(1)
+                self.__roll_low_priority__(1)
                 self.low_priority_queue[0] = client
             else:
                 raise self.PriorityQueueException('Full low priority queue')
         else:
-            self.roll_low_priority(1)
+            self.__roll_low_priority__(1)
             self.low_priority_queue[0] = client
             self.low_priority_size += 1
 
-    def push_front_high_priority(
+    def __push_front_high_priority__(
             self,
             client: Client,
             force: bool) -> None:
@@ -318,11 +302,11 @@ class ClientPriorityQueue:
             raise Exception('Illegal operaton')
         if self.high_priority_size == self.capacity:
             if force:
-                self.roll_high_priority(1)
+                self.__roll_high_priority__(1)
                 self.high_priority_queue[0] = client
             else:
                 raise self.PriorityQueueException('Full high priority queue')
         else:
-            self.roll_high_priority(1)
+            self.__roll_high_priority__(1)
             self.high_priority_queue[0] = client
             self.high_priority_size += 1
