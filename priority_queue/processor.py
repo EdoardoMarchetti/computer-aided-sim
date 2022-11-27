@@ -27,11 +27,11 @@ def main(args):
     service_time_distributions = ('exp', 'det', 'hyp',)
     params_combinations = list()
     for i in range(len(inter_arrival_lambdas)):
-        service_time_case = service_time_cases[i]
+        inter_arrival_lambda = inter_arrival_lambdas[i]
         for j in range(len(service_time_cases)):
-            service_time_distribution = service_time_distributions[j]
+            service_time_case = service_time_cases[j]
             for k in range(len(service_time_distributions)):
-                inter_arrival_lambda = inter_arrival_lambdas[k]
+                service_time_distribution = service_time_distributions[k]
                 params_combinations.append((
                     service_time_case,
                     service_time_distribution,
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--transient_tolerance',
         type=float,
-        default=10,
+        default=1e-6,
         help='Tolerance for ending the batch means algorithm.'
     )
     parser.add_argument(
@@ -102,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--accuracy',
         type=float,
-        default=10,
+        default=0.2,
         help='Accuracy level to be reached.'
     )
     parser.add_argument(
