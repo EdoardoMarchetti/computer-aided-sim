@@ -195,12 +195,12 @@ class MultiServerSimulator:
         else:
             self.to_skip_departures.remove(client_id)
             
-    def collect_batch(self) -> np.ndarray:
-        """collect str in ['queue_size', 'delay']"""
+    def collect_batch(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         n_sample = 0
         batch_size = self.transient_batch_size if self.transient \
             else self.steady_batch_size
         values = np.empty(shape=(batch_size,), dtype=float)
+        values_hp, values_lp = list(), list()
         while n_sample < batch_size:
             self.fes.sort(
                 key=lambda event: event.time,
@@ -213,8 +213,10 @@ class MultiServerSimulator:
             if next_event.name == 'departure' \
             and value is not None:
                 values[n_sample] = value
+                (values_hp if next_event.client.priority \
+                     else values_lp).append(value)
                 n_sample += 1
-        return values
+        return values, np.array(values_lp), np.array(values_hp)
 
     def confidence_interval(self) -> tuple[float, tuple[float, float]]:
         """
@@ -235,22 +237,32 @@ class MultiServerSimulator:
         else:
             return mean, norm.interval(self.confidence, mean, std)
 
+    @staticmethod
+    def cumulative_mean(data: np.ndarray) -> np.ndarray:
+        return np.array(
+            Series(data=data).expanding().mean().values
+            )
+
     def execute(self):
         transient_batches = 0
-        self.transient_values = None
+        self.transient_values = np.empty(shape=0)
+        self.transient_values_lp = np.empty(shape=0)
+        self.transient_values_hp = np.empty(shape=0)
         self.transient_means = list()
+        self.transient_means_hp = list()
+        self.transient_means_lp = list()
         while self.transient == True:
-            batch: np.ndarray = self.collect_batch()
-            self.transient_values = batch if self.transient_values is None \
-                else np.concatenate((self.transient_values, batch))
+            batch, batch_lp, batch_hp = self.collect_batch()
+            self.transient_values = np.concatenate((self.transient_values, batch))
+            self.transient_values_lp = np.concatenate((self.transient_values_lp, batch_lp))
+            self.transient_values_hp = np.concatenate((self.transient_values_hp, batch_hp))
             self.transient_means.append(np.mean(batch))
+            self.transient_means_hp.append(np.mean(batch_hp))
+            self.transient_means_lp.append(np.mean(batch_lp))
             transient_batches += 1
-            self.cumulative_means: np.ndarray = np.array(
-                Series(data=self.transient_values) \
-                .expanding() \
-                .mean() \
-                .values
-                )
+            self.cumulative_means = self.cumulative_mean(data=self.transient_values)
+            self.cumulative_means_hp = self.cumulative_mean(data=self.transient_values_hp)
+            self.cumulative_means_lp = self.cumulative_mean(data=self.transient_values_lp)
             relative_diff = np.abs(
                 self.cumulative_means[-1] - self.cumulative_means[-2]) \
                 / self.cumulative_means[-2]
@@ -258,26 +270,39 @@ class MultiServerSimulator:
                 self.transient = False
                 self.transient_end = transient_batches*self.transient_batch_size
         steady_batches = 0
-        self.steady_values = None
+        self.steady_values_lp = np.empty(shape=0)
+        self.steady_values_hp = np.empty(shape=0)
+        self.steady_values = np.empty(shape=0)
         self.steady_means = list()
+        self.steady_means_lp = list()
+        self.steady_means_hp = list()
         while steady_batches < 10:
-            batch: np.ndarray = self.collect_batch()
+            batch, batch_lp, batch_hp = self.collect_batch()
             self.steady_means.append(np.mean(batch))
-            self.steady_values = batch if self.steady_values is None \
-                else np.concatenate((self.steady_values, batch))
+            self.steady_means_lp.append(np.mean(batch_lp))
+            self.steady_means_hp.append(np.mean(batch_hp))
+            self.steady_values = np.concatenate((self.steady_values, batch))
+            self.steady_values_lp = np.concatenate((self.steady_values_lp, batch_lp))
+            self.steady_values_hp = np.concatenate((self.steady_values_hp, batch_hp))
             steady_batches += 1
         mean, conf_int = self.confidence_interval()
         while np.abs(conf_int[0]-conf_int[1]) / mean > self.accuracy:
-            batch: np.ndarray = self.collect_batch()
+            batch, batch_lp, batch_hp = self.collect_batch()
             self.steady_means.append(np.mean(batch))
-            self.steady_values = batch if self.steady_values is None \
-                else np.concatenate((self.steady_values, batch))
+            self.steady_means_lp.append(np.mean(batch_lp))
+            self.steady_means_hp.append(np.mean(batch_hp))
+            self.steady_values = np.concatenate((self.steady_values, batch))
+            self.steady_values_lp = np.concatenate((self.steady_values_lp, batch_lp))
+            self.steady_values_hp = np.concatenate((self.steady_values_hp, batch_hp))
             steady_batches += 1
             mean, conf_int = self.confidence_interval()
-        self.cumulative_means: np.ndarray = np.array(
-                Series(data=self.transient_values) \
-                .expanding() \
-                .mean() \
-                .values
-                )
+        self.cumulative_means = self.cumulative_mean(
+            data=np.concatenate((self.transient_values, self.steady_values))
+            )
+        self.cumulative_means_hp = self.cumulative_mean(
+            data=np.concatenate((self.transient_values_hp, self.steady_values_hp))
+        )
+        self.cumulative_means_lp = self.cumulative_mean(
+            data=np.concatenate((self.transient_values_lp, self.steady_values_lp))
+        )
                 
