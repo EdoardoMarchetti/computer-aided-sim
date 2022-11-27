@@ -20,7 +20,7 @@ def main(args):
         'det': 'o',
         'hyp': '+'
     }
-    atexit.register(lambda: plt.close('all'))
+    #atexit.register(lambda: plt.close('all'))
     get_seed = SeedGenerator(seed=args.seed)
     inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
     service_time_cases = ('a', 'b',)
@@ -53,29 +53,6 @@ def main(args):
         i = (i+1) % len(service_time_cases)
         j = (j+1) % len(service_time_distributions)
         k = (k+1) % len(service_time_distributions)
-
-    for i in range(len(service_time_cases)):
-        service_time_case = service_time_cases[i]
-        for j in range(len(service_time_distributions)):
-            service_time_distribution = service_time_distributions[j]
-            for k in range(len(inter_arrival_lambdas)):
-                inter_arrival_lambda = inter_arrival_lambdas[k]
-                simulator = MultiServerSimulator(
-                    n_servers = args.n_servers,
-                    queue_size=args.queue_size,
-                    service_time_distribution=service_time_distribution,
-                    inter_arrival_lp_lambda=inter_arrival_lambda,
-                    inter_arrival_hp_lambda=inter_arrival_lambda,
-                    service_time_case=service_time_case,
-                    steady_batch_size=args.steady_batch_size,
-                    transient_batch_size=args.transient_batch_size,
-                    transient_tolerance=args.transient_tolerance,
-                    confidence=args.confidence,
-                    accuracy=args.accuracy,
-                    seed=get_seed()
-                )
-                simulator.execute()
-
 
 
 if __name__ == '__main__':
