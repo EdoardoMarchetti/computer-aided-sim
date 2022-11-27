@@ -20,21 +20,30 @@ def main(args):
         'det': 'o',
         'hyp': '+'
     }
-    #atexit.register(lambda: plt.close('all'))
+    atexit.register(lambda: plt.close('all'))
     get_seed = SeedGenerator(seed=args.seed)
     inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
     service_time_cases = ('a', 'b',)
     service_time_distributions = ('exp', 'det', 'hyp',)
-    i = 0
-    j = 0
-    k = 0
-    for _ in tqdm(range(
+    params_combinations = list()
+    for i in range(len(inter_arrival_lambdas)):
+        service_time_case = service_time_cases[i]
+        for j in range(len(service_time_cases)):
+            service_time_distribution = service_time_distributions[j]
+            for k in range(len(service_time_distributions)):
+                inter_arrival_lambda = inter_arrival_lambdas[k]
+                params_combinations.append((
+                    service_time_case,
+                    service_time_distribution,
+                    inter_arrival_lambda,
+                ))
+    for i in tqdm(range(
         len(service_time_cases)\
             *len(service_time_distributions)\
                 *len(inter_arrival_lambdas))):
-        service_time_case = service_time_cases[i]
-        service_time_distribution = service_time_distributions[j]
-        inter_arrival_lambda = inter_arrival_lambdas[k]
+        service_time_case, \
+            service_time_distribution, \
+                inter_arrival_lambda = params_combinations[i]
         simulator = MultiServerSimulator(
             n_servers = args.n_servers,
             queue_size=args.queue_size,
@@ -50,9 +59,6 @@ def main(args):
             seed=get_seed()
             )
         simulator.execute()
-        i = (i+1) % len(service_time_cases)
-        j = (j+1) % len(service_time_distributions)
-        k = (k+1) % len(service_time_distributions)
 
 
 if __name__ == '__main__':
@@ -84,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--transient_tolerance',
         type=float,
-        default=1e-6,
+        default=10,
         help='Tolerance for ending the batch means algorithm.'
     )
     parser.add_argument(
@@ -96,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--accuracy',
         type=float,
-        default=0.2,
+        default=10,
         help='Accuracy level to be reached.'
     )
     parser.add_argument(
