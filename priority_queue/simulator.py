@@ -30,8 +30,10 @@ class MultiServerSimulator:
         u = self.generator.uniform()
         return exp1() if u<p else exp2()
 
-    def service_time_distribution(self) -> float:
-        DISTRIBUTIONS = {
+    def service_time_distribution(
+            self,
+            priority: bool) -> float:
+        DISTRIBUTIONS_A = {
             'exp': lambda: self.generator.exponential(1),
             'det': lambda: 1,
             'hyp': lambda: self.hyperexponential2(
@@ -40,7 +42,27 @@ class MultiServerSimulator:
                 mu2=(2+99*math.sqrt(2))/2
                 )
             }
-        return DISTRIBUTIONS[self.service_time_str]()
+        DISTRIBUTION_B_HP = {
+            'exp': lambda: self.generator.exponential(0.5),
+            'det': lambda: 0.5,
+            'hyp': lambda: self.hyperexponential2(
+                p=0.99,
+                mu1 = 0.5 - 7*math.sqrt(11)/66,
+                mu2 = 0.5 + 21*math.sqrt(11)/2
+            )
+        }
+        DISTRIBUTION_B_LP = {
+            'exp': lambda: self.generator.exponential(1.5),
+            'det': lambda: 1.5,
+            'hyp': lambda: self.hyperexponential2(
+                p=0.99,
+                mu1 = 1.5 - math.sqrt(4917)/66,
+                mu2 = 1.5 + 3*math.sqrt(4917)/2
+            )
+        }
+        distribution = DISTRIBUTIONS_A if self.service_time_case == 'a' \
+            else DISTRIBUTION_B_HP if priority else DISTRIBUTION_B_LP
+        return distribution[self.service_time_distribution_str]()
 
     def inter_arrival_distribution(self, priority: bool) -> float:
         exp_hp = lambda: self.generator.exponential(
@@ -55,9 +77,10 @@ class MultiServerSimulator:
             self,
             n_servers: int,
             queue_size: int,
-            service_time: str,
+            service_time_distribution: str,
             inter_arrival_lp_lambda: float,
             inter_arrival_hp_lambda: float,
+            service_time_case: str,
             steady_batch_size: int,
             transient_batch_size: int,
             transient_tolerance: float,
@@ -66,7 +89,7 @@ class MultiServerSimulator:
             seed: int):
         self.n_servers = n_servers
         self.queue_size = queue_size
-        self.service_time_str = service_time
+        self.service_time_distribution_str = service_time_distribution
         self.inter_arrival_hp_lambda = inter_arrival_hp_lambda
         self.inter_arrival_lp_lambda = inter_arrival_lp_lambda
         self.steady_batch_size = steady_batch_size
@@ -74,6 +97,7 @@ class MultiServerSimulator:
         self.transient_tolerance = transient_tolerance
         self.accuracy = accuracy
         self.confidence = confidence
+        self.service_time_case = service_time_case
         self.transient = True
         self.time = 0
         self.next_id = 0
@@ -109,14 +133,17 @@ class MultiServerSimulator:
             id=self.__get_next_id__(),
             priority=priority,
             arrival_time=self.time + self.inter_arrival_distribution(priority=priority),
-            service_time=self.service_time_distribution(),
+            service_time=self.service_time_distribution(priority=priority),
             start_service_time=-1
             )
          
         self.schedule_event(
             time = client.arrival_time,
             name = 'arrival_hp' if priority == True else 'arrival_lp',
-            action = lambda: self.arrival(priority=priority, client=client),
+            action = lambda: self.arrival(
+                priority=priority,
+                client=client
+                ),
             client = client
             )
 
@@ -139,7 +166,7 @@ class MultiServerSimulator:
                 self.schedule_departure(client)
                 if removed_low_priority is not None:
                     removed_low_priority.service_time = \
-                        self.time - removed_low_priority.start_service_time
+                self.time - removed_low_priority.start_service_time
                     rescheduled, _ = self.queue.append(
                         client=removed_low_priority,
                         front=True,
