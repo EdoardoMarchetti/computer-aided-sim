@@ -34,7 +34,7 @@ class ClientPriorityQueue:
         Create a new queue with two levels of priority
         (low and high). Capacity is the parameter to
         specify the maximum number of clients in the
-        queue
+        queue.
         """
         self.high_priority_queue = np.empty(
             shape=(capacity,),
@@ -66,6 +66,16 @@ class ClientPriorityQueue:
     def find_client(
             self,
             client_id: int) -> tuple[Client, int]|None:
+        """
+        Return the position of the client.
+        IN:
+            - client_id: the id of the client.
+        OUT:
+            - the object client with that specific id (the
+              client is not removed from the queue).
+            - its position in the queue.
+            - if the client is not present, None is returned.
+        """
         for priority in (True, False):
             queue_size = self.high_priority_size if priority \
                 else self.low_priority_size
@@ -78,12 +88,24 @@ class ClientPriorityQueue:
 
     def pop_specific_client(
             self,
-            position: int,
-            priority: bool) -> Client:
+            priority: bool,
+            position: int
+            ) -> Client:
+        """
+        Pop a client from a specific position.
+        IN:
+            - priority: the priority of the client to be removed.
+            - position: the index of the client in its queue.
+        OUT:
+            - the object Client in that position. The client is
+              completely removed from the queue.
+        """
         queue_size = self.high_priority_size if priority \
             else self.low_priority_size
         queue = self.high_priority_queue if priority \
             else self.low_priority_queue
+        if position >= queue_size:
+            raise self.PriorityQueueException('Position out of bound.')
         client: Client = queue[position]
         queue[position] = queue[queue_size-1]
         self.size -= 1
@@ -171,12 +193,14 @@ class ClientPriorityQueue:
         return inserted, removed_low_priority
 
     def __roll_high_priority__(self, shift: int) -> None:
+        """Auxiliary method, DO NOT INVOKE FROM THE OUTSIDE."""
         self.high_priority_queue = np.roll(
             a=self.high_priority_queue,
             shift=shift
         )
     
     def __roll_low_priority__(self, shift: int) -> None:
+        """Auxiliary method, DO NOT INVOKE FROM THE OUTSIDE."""
         self.low_priority_queue = np.roll(
             a=self.low_priority_queue,
             shift=shift

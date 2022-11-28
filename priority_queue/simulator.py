@@ -186,8 +186,8 @@ class MultiServerSimulator:
                 client, position = client
                 self.served_clients += 1#int(not self.transient)
                 self.servers.pop_specific_client(
-                    position=position,
-                    priority=client.priority
+                    priority=client.priority,
+                    position=position
                     )
                 if not self.queue.is_empty():
                     next_client = self.queue.pop()
