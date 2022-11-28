@@ -47,8 +47,8 @@ class MultiServerSimulator:
             'det': lambda: 0.5,
             'hyp': lambda: self.hyperexponential2(
                 p=0.99,
-                mu1 = 0.5 - 7*math.sqrt(11)/66,
-                mu2 = 0.5 + 21*math.sqrt(11)/2
+                mu1 = (2-math.sqrt(2))/4,
+                mu2 = (2+99*math.sqrt(2))/math.sqrt(2)
             )
         }
         DISTRIBUTION_B_LP = {
@@ -56,8 +56,8 @@ class MultiServerSimulator:
             'det': lambda: 1.5,
             'hyp': lambda: self.hyperexponential2(
                 p=0.99,
-                mu1 = 1.5 - math.sqrt(4917)/66,
-                mu2 = 1.5 + 3*math.sqrt(4917)/2
+                mu1 = (6-3*math.sqrt(2))/4,
+                mu2 = (6+97*math.sqrt(2))/4
             )
         }
         distribution = DISTRIBUTIONS_A if self.service_time_case == 'a' \
@@ -85,7 +85,7 @@ class MultiServerSimulator:
             transient_batch_size: int,
             transient_tolerance: float,
             confidence: float,
-            accuracy: float,
+            max_served_clients: int,
             seed: int):
         self.n_servers = n_servers
         self.queue_size = queue_size
@@ -95,7 +95,7 @@ class MultiServerSimulator:
         self.steady_batch_size = steady_batch_size
         self.transient_batch_size = transient_batch_size
         self.transient_tolerance = transient_tolerance
-        self.accuracy = accuracy
+        self.max_served_clients = max_served_clients
         self.confidence = confidence
         self.service_time_case = service_time_case
         self.transient = True
@@ -105,7 +105,7 @@ class MultiServerSimulator:
         self.queue = ClientPriorityQueue(capacity=queue_size)
         self.servers = ClientPriorityQueue(capacity=n_servers)
         self.fes = list()
-        self.to_skip_departures = set()
+        self.to_skip_departures = dict()
         self.schedule_arrival(priority=True)
         self.schedule_arrival(priority=False)
 
@@ -173,7 +173,10 @@ class MultiServerSimulator:
                         force=True
                         )
                     if rescheduled:
-                        self.to_skip_departures.add(removed_low_priority.id)
+                        if removed_low_priority.id in self.to_skip_departures.keys():
+                            self.to_skip_departures[removed_low_priority.id] += 1
+                        else:
+                            self.to_skip_departures[removed_low_priority.id] = 1
         return self.queue.size
 
     def departure(self, client_id: int) -> float|None:
@@ -181,6 +184,7 @@ class MultiServerSimulator:
             client = self.servers.find_client(client_id)
             if client is not None:
                 client, position = client
+                self.served_clients += 1#int(not self.transient)
                 self.servers.pop_specific_client(
                     position=position,
                     priority=client.priority
@@ -193,32 +197,15 @@ class MultiServerSimulator:
             else:
                 raise Exception('Performing departure on None')
         else:
-            self.to_skip_departures.remove(client_id)
+            self.to_skip_departures[client_id] -= 1
+            if self.to_skip_departures[client_id] == 0:
+                self.to_skip_departures.pop(client_id)
             
-    def collect_batch(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        n_sample = 0
-        batch_size = self.transient_batch_size if self.transient \
-            else self.steady_batch_size
-        values = np.empty(shape=(batch_size,), dtype=float)
-        values_hp, values_lp = list(), list()
-        while n_sample < batch_size:
-            self.fes.sort(
-                key=lambda event: event.time,
-                reverse=True
-                )
-            next_event: MultiServerSimulator.FutureEvent = \
-                self.fes.pop()
-            self.time = next_event.time
-            value = next_event.action()
-            if next_event.name == 'departure' \
-            and value is not None:
-                values[n_sample] = value
-                (values_hp if next_event.client.priority \
-                     else values_lp).append(value)
-                n_sample += 1
-        return values, np.array(values_lp), np.array(values_hp)
-
-    def confidence_interval(self) -> tuple[float, tuple[float, float]]:
+    @staticmethod
+    def confidence_interval(
+            data: np.ndarray,
+            confidence: float
+            ) -> tuple[float, tuple[float, float]]:
         """
         Compute the confidence interval of the mean value
         of the collected metric, from the 'start' value.
@@ -228,14 +215,13 @@ class MultiServerSimulator:
             - the mean value
             - the confidence interval
         """
-        values = np.array(self.steady_means)
-        n = len(values)
-        mean = float(np.mean(values))
-        std = np.std(values, ddof=1)/np.sqrt(n)
+        n = len(data)
+        mean = float(np.mean(data))
+        std = np.std(data, ddof=1)/np.sqrt(n)
         if n < 30:
-            return mean, t.interval(self.confidence, n-1, mean, std)
+            return mean, t.interval(confidence, n-1, mean, std)
         else:
-            return mean, norm.interval(self.confidence, mean, std)
+            return mean, norm.interval(confidence, mean, std)
 
     @staticmethod
     def cumulative_mean(data: np.ndarray) -> np.ndarray:
@@ -243,66 +229,63 @@ class MultiServerSimulator:
             Series(data=data).expanding().mean().values
             )
 
-    def execute(self):
-        transient_batches = 0
-        self.transient_values = np.empty(shape=0)
-        self.transient_values_lp = np.empty(shape=0)
-        self.transient_values_hp = np.empty(shape=0)
-        self.transient_means = list()
-        self.transient_means_hp = list()
-        self.transient_means_lp = list()
-        while self.transient == True:
-            batch, batch_lp, batch_hp = self.collect_batch()
-            self.transient_values = np.concatenate((self.transient_values, batch))
-            self.transient_values_lp = np.concatenate((self.transient_values_lp, batch_lp))
-            self.transient_values_hp = np.concatenate((self.transient_values_hp, batch_hp))
-            self.transient_means.append(np.mean(batch))
-            self.transient_means_hp.append(np.mean(batch_hp))
-            self.transient_means_lp.append(np.mean(batch_lp))
-            transient_batches += 1
-            self.cumulative_means = self.cumulative_mean(data=self.transient_values)
-            self.cumulative_means_hp = self.cumulative_mean(data=self.transient_values_hp)
-            self.cumulative_means_lp = self.cumulative_mean(data=self.transient_values_lp)
-            relative_diff = np.abs(
-                self.cumulative_means[-1] - self.cumulative_means[-2]) \
-                / self.cumulative_means[-2]
-            if relative_diff < self.transient_tolerance:
-                self.transient = False
-                self.transient_end = transient_batches*self.transient_batch_size
-        steady_batches = 0
-        self.steady_values_lp = np.empty(shape=0)
-        self.steady_values_hp = np.empty(shape=0)
-        self.steady_values = np.empty(shape=0)
-        self.steady_means = list()
-        self.steady_means_lp = list()
-        self.steady_means_hp = list()
-        while steady_batches < 10:
-            batch, batch_lp, batch_hp = self.collect_batch()
-            self.steady_means.append(np.mean(batch))
-            self.steady_means_lp.append(np.mean(batch_lp))
-            self.steady_means_hp.append(np.mean(batch_hp))
-            self.steady_values = np.concatenate((self.steady_values, batch))
-            self.steady_values_lp = np.concatenate((self.steady_values_lp, batch_lp))
-            self.steady_values_hp = np.concatenate((self.steady_values_hp, batch_hp))
-            steady_batches += 1
-        mean, conf_int = self.confidence_interval()
-        while np.abs(conf_int[0]-conf_int[1]) / mean > self.accuracy:
-            batch, batch_lp, batch_hp = self.collect_batch()
-            self.steady_means.append(np.mean(batch))
-            self.steady_means_lp.append(np.mean(batch_lp))
-            self.steady_means_hp.append(np.mean(batch_hp))
-            self.steady_values = np.concatenate((self.steady_values, batch))
-            self.steady_values_lp = np.concatenate((self.steady_values_lp, batch_lp))
-            self.steady_values_hp = np.concatenate((self.steady_values_hp, batch_hp))
-            steady_batches += 1
-            mean, conf_int = self.confidence_interval()
-        self.cumulative_means = self.cumulative_mean(
-            data=np.concatenate((self.transient_values, self.steady_values))
-            )
-        self.cumulative_means_hp = self.cumulative_mean(
-            data=np.concatenate((self.transient_values_hp, self.steady_values_hp))
-        )
-        self.cumulative_means_lp = self.cumulative_mean(
-            data=np.concatenate((self.transient_values_lp, self.steady_values_lp))
-        )
-                
+    def collect_batch(self) -> dict:
+        n_sample_queue_size = 0
+        n_sample_delay = 0
+        batch_size = self.transient_batch_size if self.transient \
+            else self.steady_batch_size
+        values_queue_size = np.empty(shape=(batch_size,), dtype=float)
+        values_hp_queue_size = list()
+        values_lp_queue_size = list()
+        values_delay = np.empty(shape=(batch_size,), dtype=float)
+        values_hp_delay = list()
+        values_lp_delay = list()
+        while n_sample_queue_size < batch_size \
+        or n_sample_delay < batch_size:
+            self.fes.sort(
+                key=lambda event: event.time,
+                reverse=True
+                )
+            next_event: MultiServerSimulator.FutureEvent = \
+                self.fes.pop()
+            self.time = next_event.time
+            value = next_event.action()
+            if next_event.name.startswith('arrival') \
+            and n_sample_queue_size < batch_size:
+                values_queue_size[n_sample_queue_size] = value
+                (values_hp_queue_size if next_event.client.priority \
+                     else values_lp_queue_size).append(value)
+                n_sample_queue_size += 1
+            if next_event.name == 'departure' \
+            and value is not None\
+            and n_sample_delay < batch_size:
+                values_delay[n_sample_delay] = value
+                (values_hp_delay if next_event.client.priority \
+                     else values_lp_delay).append(value)
+                n_sample_delay += 1
+
+        return {
+            'queue_size': values_queue_size,
+            'queue_size_hp': np.array(values_hp_queue_size),
+            'queue_size_lp': np.array(values_lp_queue_size),
+            'delay': values_delay,
+            'delay_hp': np.array(values_hp_delay),
+            'delay_lp': np.array(values_lp_delay)
+        }
+
+    def execute(self) -> tuple[dict, dict, int]:
+        self.served_clients = 0
+        values = dict()
+        means = dict()
+        n_batches = 0
+        while self.served_clients < self.max_served_clients:
+            batch: dict = self.collect_batch()
+            n_batches += 1
+            if len(values) > 0:
+                for key in batch:
+                    values[key] = np.concatenate((values[key], batch[key]))
+            else:
+                values = batch
+            for key in values:
+                means[key] = self.cumulative_mean(data=values[key])
+        return values, means, n_batches

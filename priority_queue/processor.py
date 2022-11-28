@@ -22,8 +22,9 @@ def main(args):
     }
     atexit.register(lambda: plt.close('all'))
     get_seed = SeedGenerator(seed=args.seed)
-    inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
-    service_time_cases = ('a', 'b',)
+    #inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
+    inter_arrival_lambdas = (0.2, 0.8, 1.4, 2.8)
+    service_time_cases = ('a',)
     service_time_distributions = ('exp', 'det', 'hyp',)
     params_combinations = list()
     for i in range(len(inter_arrival_lambdas)):
@@ -55,10 +56,15 @@ def main(args):
             transient_batch_size=args.transient_batch_size,
             transient_tolerance=args.transient_tolerance,
             confidence=args.confidence,
-            accuracy=args.accuracy,
+            max_served_clients=args.max_served_clients,
             seed=get_seed()
             )
-        simulator.execute()
+        values, means, n_batches = simulator.execute()
+        _, ax = plt.subplots(1,1, figsize=(7,7))
+        ax.plot(values['delay'])
+        ax.plot(means['delay'])
+    plt.show(block=False)
+    input('Press enter to close all the figures.')
 
 
 if __name__ == '__main__':
@@ -90,7 +96,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--transient_tolerance',
         type=float,
-        default=1e-6,
+        default=1e-4,
         help='Tolerance for ending the batch means algorithm.'
     )
     parser.add_argument(
@@ -100,9 +106,9 @@ if __name__ == '__main__':
         help='Confidence interval (default .95).'
     )
     parser.add_argument(
-        '--accuracy',
-        type=float,
-        default=0.2,
+        '--max_served_clients',
+        type=int,
+        default=10000,
         help='Accuracy level to be reached.'
     )
     parser.add_argument(
