@@ -131,7 +131,8 @@ class MultiServerSimulator:
         client = Client(
             id=self.__get_next_id__(),
             priority=priority,
-            arrival_time=self.time+self.inter_arrival_distribution(priority=priority),
+            arrival_time=self.time +\
+                self.inter_arrival_distribution(priority=priority),
             service_time=self.service_time_distribution(priority=priority),
             start_service_time=-1
             )
@@ -293,19 +294,27 @@ class MultiServerSimulator:
             else:
                 values = batch
             for key in values:
-                cumulative_means[key] = self.cumulative_mean(data=values[key])
+                cumulative_means[key] = self.cumulative_mean(
+                    data=values[key]
+                    )
             cum_mean = cumulative_means['queue_size_hp']
             rel_diff = np.abs(cum_mean[-1]-cum_mean[-2])/cum_mean[-2]
             if rel_diff < self.transient_tolerance:
                 self.transient = False
                 self.transient_end = n_batches
             if not self.transient:
-                means['mean_delay'].append(self.confidence_interval(batch['delay']))
-                means['mean_delay_hp'].append(self.confidence_interval(batch['delay_hp']))
-                means['mean_delay_lp'].append(self.confidence_interval(batch['delay_lp']))
-                means['mean_queue_size'].append(self.confidence_interval(batch['queue_size']))
-                means['mean_queue_size_hp'].append(self.confidence_interval(batch['queue_size_hp']))
-                means['mean_queue_size_lp'].append(self.confidence_interval(batch['queue_size_lp']))
+                means['mean_delay'].append(
+                    self.confidence_interval(batch['delay']))
+                means['mean_delay_hp'].append(
+                    self.confidence_interval(batch['delay_hp']))
+                means['mean_delay_lp'].append(
+                    self.confidence_interval(batch['delay_lp']))
+                means['mean_queue_size'].append(
+                    self.confidence_interval(batch['queue_size']))
+                means['mean_queue_size_hp'].append(
+                    self.confidence_interval(batch['queue_size_hp']))
+                means['mean_queue_size_lp'].append(
+                    self.confidence_interval(batch['queue_size_lp']))
 
         means_np = dict()
         for key in means:

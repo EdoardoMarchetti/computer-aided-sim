@@ -214,7 +214,8 @@ class ClientPriorityQueue:
         OUT: the oldest client with high priority
         """
         if self.high_priority_size == 0:
-            raise self.PriorityQueueException('No high priority client in the queue.')
+            raise self.PriorityQueueException(
+                'No high priority client in the queue.')
         client = self.high_priority_queue[0]
         self.__roll_high_priority__(-1)
         self.high_priority_size -= 1
@@ -228,7 +229,8 @@ class ClientPriorityQueue:
         OUT: the oldest client with low priority
         """
         if self.low_priority_size == 0:
-            raise self.PriorityQueueException('No low priority client in the queue.')
+            raise self.PriorityQueueException(
+                'No low priority client in the queue.')
         client = self.low_priority_queue[0]
         self.__roll_low_priority__(-1)
         self.low_priority_size -= 1
@@ -242,7 +244,8 @@ class ClientPriorityQueue:
         OUT: the youngest client with high priority
         """
         if self.high_priority_size == 0:
-            raise self.PriorityQueueException('No high priority client in the queue')
+            raise self.PriorityQueueException(
+                'No high priority client in the queue')
         self.high_priority_size -= 1
         return self.high_priority_queue[self.high_priority_size]
 
@@ -254,7 +257,8 @@ class ClientPriorityQueue:
         OUT: the youngest client with low priority
         """
         if self.low_priority_size == 0:
-            raise self.PriorityQueueException('No low priority client in the queue')
+            raise self.PriorityQueueException(
+                'No low priority client in the queue')
         self.low_priority_size -= 1
         return self.low_priority_queue[self.low_priority_size]
 
@@ -279,7 +283,8 @@ class ClientPriorityQueue:
             if force:
                 self.low_priority_queue[self.low_priority_size-1] = client
             else:
-                raise self.PriorityQueueException('Full low priority queue')
+                raise self.PriorityQueueException(
+                    'Full low priority queue')
         else:
             self.low_priority_queue[self.low_priority_size] = client
             self.low_priority_size += 1
@@ -310,7 +315,8 @@ class ClientPriorityQueue:
                 if force:
                     self.high_priority_queue[self.high_priority_size-1] = client
                 else:
-                    raise self.PriorityQueueException('Full high priority queue')
+                    raise self.PriorityQueueException(
+                        'Full high priority queue')
         else:
             self.high_priority_queue[self.high_priority_size] = client
             self.high_priority_size += 1
@@ -335,7 +341,8 @@ class ClientPriorityQueue:
                 self.__roll_low_priority__(1)
                 self.low_priority_queue[0] = client
             else:
-                raise self.PriorityQueueException('Full low priority queue')
+                raise self.PriorityQueueException(
+                    'Full low priority queue')
         else:
             self.__roll_low_priority__(1)
             self.low_priority_queue[0] = client
@@ -362,7 +369,8 @@ class ClientPriorityQueue:
                 self.__roll_high_priority__(1)
                 self.high_priority_queue[0] = client
             else:
-                raise self.PriorityQueueException('Full high priority queue')
+                raise self.PriorityQueueException(
+                    'Full high priority queue')
         else:
             self.__roll_high_priority__(1)
             self.high_priority_queue[0] = client
