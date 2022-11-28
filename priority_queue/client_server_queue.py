@@ -105,7 +105,7 @@ class ClientPriorityQueue:
         queue = self.high_priority_queue if priority \
             else self.low_priority_queue
         if position >= queue_size:
-            raise self.PriorityQueueException('Position out of bound.')
+            raise Exception('Position out of bound.')
         client: Client = queue[position]
         queue[position] = queue[queue_size-1]
         self.size -= 1

@@ -119,20 +119,19 @@ class MultiServerSimulator:
             name: str,
             action: Callable,
             client: Client) -> None:
-        new_event = \
+        self.fes.append(
             self.FutureEvent(
                 time=time,
                 action=action,
                 name=name,
                 client=client
-            )
-        self.fes.append(new_event)
+            ))
         
     def schedule_arrival(self, priority: bool) -> None:
         client = Client(
             id=self.__get_next_id__(),
             priority=priority,
-            arrival_time=self.time + self.inter_arrival_distribution(priority=priority),
+            arrival_time=self.time+self.inter_arrival_distribution(priority=priority),
             service_time=self.service_time_distribution(priority=priority),
             start_service_time=-1
             )
@@ -155,7 +154,10 @@ class MultiServerSimulator:
             client = client
         )
 
-    def arrival(self, priority: bool, client: Client) -> float:
+    def arrival(
+            self,
+            priority: bool,
+            client: Client) -> tuple[float, float]:
         self.schedule_arrival(priority=priority)
         self.queue.append(client)
         if self.servers.is_available():
@@ -177,14 +179,14 @@ class MultiServerSimulator:
                             self.to_skip_departures[removed_low_priority.id] += 1
                         else:
                             self.to_skip_departures[removed_low_priority.id] = 1
-        return self.queue.size
+        return self.queue.high_priority_size, self.queue.low_priority_size
 
     def departure(self, client_id: int) -> float|None:
         if client_id not in self.to_skip_departures:
             client = self.servers.find_client(client_id)
             if client is not None:
                 client, position = client
-                self.served_clients += 1#int(not self.transient)
+                self.served_clients += int(not self.transient)
                 self.servers.pop_specific_client(
                     priority=client.priority,
                     position=position
@@ -230,56 +232,62 @@ class MultiServerSimulator:
             )
 
     def collect_batch(self) -> dict:
-        n_sample_queue_size = 0
-        n_sample_delay = 0
+        queue_size = list()
+        queue_size_hp = list()
+        queue_size_lp = list()
+        delay = list()
+        delay_hp = list()
+        delay_lp = list()
         batch_size = self.transient_batch_size if self.transient \
             else self.steady_batch_size
-        values_queue_size = np.empty(shape=(batch_size,), dtype=float)
-        values_hp_queue_size = list()
-        values_lp_queue_size = list()
-        values_delay = np.empty(shape=(batch_size,), dtype=float)
-        values_hp_delay = list()
-        values_lp_delay = list()
-        while n_sample_queue_size < batch_size \
-        or n_sample_delay < batch_size:
-            self.fes.sort(
-                key=lambda event: event.time,
-                reverse=True
-                )
+        while len(queue_size) < batch_size \
+                or len(delay) < batch_size:
+            self.fes.sort(key=lambda x: x.time, reverse=True)
             next_event: MultiServerSimulator.FutureEvent = \
                 self.fes.pop()
             self.time = next_event.time
-            value = next_event.action()
-            if next_event.name.startswith('arrival') \
-            and n_sample_queue_size < batch_size:
-                values_queue_size[n_sample_queue_size] = value
-                (values_hp_queue_size if next_event.client.priority \
-                     else values_lp_queue_size).append(value)
-                n_sample_queue_size += 1
-            if next_event.name == 'departure' \
-            and value is not None\
-            and n_sample_delay < batch_size:
-                values_delay[n_sample_delay] = value
-                (values_hp_delay if next_event.client.priority \
-                     else values_lp_delay).append(value)
-                n_sample_delay += 1
+            if next_event.name.startswith('arrival'):
+                hp_value, lp_value = next_event.action()
+                queue_size.append(hp_value+lp_value)
+                queue_size_hp.append(hp_value)
+                queue_size_lp.append(lp_value)
+            elif next_event.name == 'departure':
+                value: float|None = next_event.action()
+                if value is not None:
+                    delay.append(value)
+                    (delay_hp if next_event.client.priority \
+                        else delay_lp).append(value)
 
         return {
-            'queue_size': values_queue_size,
-            'queue_size_hp': np.array(values_hp_queue_size),
-            'queue_size_lp': np.array(values_lp_queue_size),
-            'delay': values_delay,
-            'delay_hp': np.array(values_hp_delay),
-            'delay_lp': np.array(values_lp_delay)
+            'queue_size': np.array(queue_size),
+            'queue_size_hp': np.array(queue_size_hp),
+            'queue_size_lp': np.array(queue_size_lp),
+            'delay': np.array(delay),
+            'delay_hp': np.array(delay_hp),
+            'delay_lp': np.array(delay_lp)
         }
 
-    def execute(self) -> tuple[dict, dict, int]:
+    def execute(self) -> dict:
         self.served_clients = 0
         values = dict()
-        means = dict()
+        cumulative_means = dict()
         n_batches = 0
+        means = {
+            'mean_delay': [],
+            'mean_delay_hp': [],
+            'mean_delay_lp': [],
+            'mean_queue_size': [],
+            'mean_queue_size_hp': [],
+            'mean_queue_size_lp': []
+        }
         while self.served_clients < self.max_served_clients:
             batch: dict = self.collect_batch()
+            means['mean_delay'].append(np.mean(batch['delay']))
+            means['mean_delay_hp'].append(np.mean(batch['delay_hp']))
+            means['mean_delay_lp'].append(np.mean(batch['delay_lp']))
+            means['mean_queue_size'].append(np.mean(batch['queue_size']))
+            means['mean_queue_size_hp'].append(np.mean(batch['queue_size_hp']))
+            means['mean_queue_size_lp'].append(np.mean(batch['queue_size_lp']))
             n_batches += 1
             if len(values) > 0:
                 for key in batch:
@@ -287,5 +295,18 @@ class MultiServerSimulator:
             else:
                 values = batch
             for key in values:
-                means[key] = self.cumulative_mean(data=values[key])
-        return values, means, n_batches
+                cumulative_means[key] = self.cumulative_mean(data=values[key])
+            cum_mean = cumulative_means['queue_size_hp']
+            rel_diff = np.abs(cum_mean[-1]-cum_mean[-2])/cum_mean[-2]
+            if rel_diff < self.transient_tolerance:
+                self.transient = False
+
+        means_np = dict()
+        for key in means:
+            means_np[key] = np.array(means[key])
+        return {
+            'n_batches': n_batches,
+            'values': values,
+            'cumulative_mean': cumulative_means,
+            'means': means_np
+        }

@@ -38,10 +38,7 @@ def main(args):
                     service_time_distribution,
                     inter_arrival_lambda,
                 ))
-    for i in tqdm(range(
-        len(service_time_cases)\
-            *len(service_time_distributions)\
-                *len(inter_arrival_lambdas))):
+    for i in tqdm(range(len(params_combinations))):
         service_time_case, \
             service_time_distribution, \
                 inter_arrival_lambda = params_combinations[i]
@@ -59,12 +56,7 @@ def main(args):
             max_served_clients=args.max_served_clients,
             seed=get_seed()
             )
-        values, means, n_batches = simulator.execute()
-        _, ax = plt.subplots(1,1, figsize=(7,7))
-        ax.plot(values['delay'])
-        ax.plot(means['delay'])
-    plt.show(block=False)
-    input('Press enter to close all the figures.')
+        results = simulator.execute()
 
 
 if __name__ == '__main__':
