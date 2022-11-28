@@ -52,13 +52,31 @@ def main(args):
             )
         results = simulator.execute()
         means = results['means']
-        aggregate_means = means['mean_delay']
-        hp_means = means['mean_delay_hp']
-        lp_means = means['mean_delay_lp']
+        delay, left_conf_int, right_conf_int = \
+            means['mean_delay'][:,0], means['mean_delay'][:,1], means['mean_delay'][:,2]
+        hp_delay, hp_left_conf_int, hp_right_conf_int = \
+            means['mean_delay_hp'][:,0], means['mean_delay_hp'][:,1], means['mean_delay_hp'][:,2]
+        lp_delay, lp_left_conf_int, lp_right_conf_int = \
+            means['mean_delay_lp'][:,0], means['mean_delay_lp'][:,1], means['mean_delay_lp'][:,2]
         _, ax = plt.subplots(1, 1, figsize=(7,7))
-        ax.plot(aggregate_means)
-        ax.plot(hp_means)
-        ax.plot(lp_means)
+        ax.plot(delay)
+        ax.fill_between(
+            x=np.arange(len(delay)),
+            y1=left_conf_int,
+            y2=right_conf_int
+            )
+        ax.plot(hp_delay)
+        ax.fill_between(
+            x=np.arange(len(hp_delay)),
+            y1=hp_left_conf_int,
+            y2=hp_right_conf_int
+        )
+        ax.plot(lp_delay)
+        ax.fill_between(
+            x=np.arange(len(lp_delay)),
+            y1=lp_left_conf_int,
+            y2=lp_right_conf_int
+        )
         title = 'Average delay\n' + \
             f'Service time case: {service_time_case}\n' + \
             f'Service time distribution: {service_time_distribution}\n' + \
@@ -66,7 +84,10 @@ def main(args):
         ax.set_title(title)
         ax.set_xlabel('Time')
         ax.set_ylabel('Average delay')
-        ax.legend(('Aggregate', 'High priority', 'Low priority'))
+        ax.legend((
+            'Aggregate', 'Aggregate .95 conf int',
+            'High priority', 'High priority .95 conf int',
+            'Low priority', 'Low priority .95 conf int'))
     plt.show(block=False)
     input('Press enter to close all the figures')
 

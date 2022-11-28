@@ -203,27 +203,27 @@ class MultiServerSimulator:
             if self.to_skip_departures[client_id] == 0:
                 self.to_skip_departures.pop(client_id)
             
-    @staticmethod
     def confidence_interval(
-            data: np.ndarray,
-            confidence: float
-            ) -> tuple[float, tuple[float, float]]:
+            self,
+            data: np.ndarray
+            ) -> tuple[float, float, float]:
         """
         Compute the confidence interval of the mean value
-        of the collected metric, from the 'start' value.
+        of the collected metric, from the start value
         IN:
             - None
         OUT:
             - the mean value
-            - the confidence interval
+            - the left confidence interval
+            - the right confidence interval
         """
+        data = data[self.transient_end:]
         n = len(data)
         mean = float(np.mean(data))
         std = np.std(data, ddof=1)/np.sqrt(n)
-        if n < 30:
-            return mean, t.interval(confidence, n-1, mean, std)
-        else:
-            return mean, norm.interval(confidence, mean, std)
+        interval = t.interval(self.confidence, n-1, mean, std) if n < 30 \
+            else norm.interval(self.confidence, mean, std)
+        return mean, interval[0], interval[1]
 
     @staticmethod
     def cumulative_mean(data: np.ndarray) -> np.ndarray:
@@ -283,14 +283,9 @@ class MultiServerSimulator:
             'mean_queue_size_hp': [],
             'mean_queue_size_lp': []
         }
+        n_batches = 0
         while self.served_clients < self.max_served_clients:
             batch: dict = self.collect_batch()
-            means['mean_delay'].append(np.mean(batch['delay']))
-            means['mean_delay_hp'].append(np.mean(batch['delay_hp']))
-            means['mean_delay_lp'].append(np.mean(batch['delay_lp']))
-            means['mean_queue_size'].append(np.mean(batch['queue_size']))
-            means['mean_queue_size_hp'].append(np.mean(batch['queue_size_hp']))
-            means['mean_queue_size_lp'].append(np.mean(batch['queue_size_lp']))
             n_batches += 1
             if len(values) > 0:
                 for key in batch:
@@ -303,6 +298,14 @@ class MultiServerSimulator:
             rel_diff = np.abs(cum_mean[-1]-cum_mean[-2])/cum_mean[-2]
             if rel_diff < self.transient_tolerance:
                 self.transient = False
+                self.transient_end = n_batches
+            if not self.transient:
+                means['mean_delay'].append(self.confidence_interval(batch['delay']))
+                means['mean_delay_hp'].append(self.confidence_interval(batch['delay_hp']))
+                means['mean_delay_lp'].append(self.confidence_interval(batch['delay_lp']))
+                means['mean_queue_size'].append(self.confidence_interval(batch['queue_size']))
+                means['mean_queue_size_hp'].append(self.confidence_interval(batch['queue_size_hp']))
+                means['mean_queue_size_lp'].append(self.confidence_interval(batch['queue_size_lp']))
 
         means_np = dict()
         for key in means:
