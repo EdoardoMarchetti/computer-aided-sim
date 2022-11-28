@@ -248,9 +248,12 @@ class MultiServerSimulator:
             self.time = next_event.time
             if next_event.name.startswith('arrival'):
                 hp_value, lp_value = next_event.action()
-                queue_size.append(hp_value+lp_value)
-                queue_size_hp.append(hp_value)
-                queue_size_lp.append(lp_value)
+                if len(queue_size) < batch_size:
+                    queue_size.append(hp_value+lp_value)
+                if len(queue_size_hp) < batch_size:
+                    queue_size_hp.append(hp_value)
+                if len(queue_size_lp) < batch_size:
+                    queue_size_lp.append(lp_value)
             elif next_event.name == 'departure':
                 value: float|None = next_event.action()
                 if value is not None:

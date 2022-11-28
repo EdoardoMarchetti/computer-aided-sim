@@ -15,16 +15,10 @@ class SeedGenerator:
 
 
 def main(args):
-    MARKERS = {
-        'exp': 'x',
-        'det': 'o',
-        'hyp': '+'
-    }
     atexit.register(lambda: plt.close('all'))
     get_seed = SeedGenerator(seed=args.seed)
-    #inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
-    inter_arrival_lambdas = (0.2, 0.8, 1.4, 2.8)
-    service_time_cases = ('a',)
+    inter_arrival_lambdas = (0.2, 0.4, 0.8, 1.4, 2.0, 2.4, 2.8,)
+    service_time_cases = ('a', 'b')
     service_time_distributions = ('exp', 'det', 'hyp',)
     params_combinations = list()
     for i in range(len(inter_arrival_lambdas)):
@@ -57,6 +51,24 @@ def main(args):
             seed=get_seed()
             )
         results = simulator.execute()
+        means = results['means']
+        aggregate_means = means['mean_delay']
+        hp_means = means['mean_delay_hp']
+        lp_means = means['mean_delay_lp']
+        _, ax = plt.subplots(1, 1, figsize=(7,7))
+        ax.plot(aggregate_means)
+        ax.plot(hp_means)
+        ax.plot(lp_means)
+        title = 'Average delay\n' + \
+            f'Service time case: {service_time_case}\n' + \
+            f'Service time distribution: {service_time_distribution}\n' + \
+            f'Inter arrival lambda: {inter_arrival_lambda}'
+        ax.set_title(title)
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Average delay')
+        ax.legend(('Aggregate', 'High priority', 'Low priority'))
+    plt.show(block=False)
+    input('Press enter to close all the figures')
 
 
 if __name__ == '__main__':
