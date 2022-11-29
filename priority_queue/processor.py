@@ -80,6 +80,7 @@ def main(args):
                     service_time_distribution,
                     inter_arrival_lambda,
                 ))
+    mean_accuracy = 0
     for i in tqdm(range(len(params_combinations))):
         service_time_case, \
             service_time_distribution, \
@@ -114,6 +115,10 @@ def main(args):
             hp_delay, hp_left_conf_int, hp_right_conf_int,
             lp_delay, lp_left_conf_int, lp_right_conf_int
             )
+        accuracy = results['accuracy']
+        mean_accuracy += accuracy['mean_delay']
+    mean_accuracy = mean_accuracy / len(params_combinations)
+    print(f'Mean accuracy: {mean_accuracy}')
     plt.show(block=False)
     input('Press enter to close all the figures')
 

@@ -330,11 +330,16 @@ class MultiServerSimulator:
                     self.confidence_interval(batch['queue_size_lp'])
                     )
         means_np = dict()
+        accuracy = dict()
         for key in means:
             means_np[key] = np.array(means[key])
+            last = means_np[key][-1]
+            accuracy[key] = np.abs(last[1]-last[2])/last[0]
+
         return {
             'n_batches': n_batches,
             'values': values,
             'cumulative_mean': cumulative_means,
-            'means': means_np
+            'means': means_np,
+            'accuracy': accuracy
         }
