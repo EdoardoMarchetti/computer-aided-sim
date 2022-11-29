@@ -178,7 +178,7 @@ class ClientPriorityQueue:
                     except self.PriorityQueueException:
                         inserted = False
             else:
-                self.__push_front_high_priority__(client, force)
+                push_high_priority(client, force)
                 inserted = True
         else:
             if self.high_priority_size == self.capacity:

@@ -233,6 +233,10 @@ class MultiServerSimulator:
             )
 
     def collect_batch(self) -> dict:
+        """
+        Collect a batch of a size choosed looking at the
+        state of the simulator (transient/steady).
+        """
         queue_size = list()
         queue_size_hp = list()
         queue_size_lp = list()
@@ -272,6 +276,10 @@ class MultiServerSimulator:
         }
 
     def execute(self) -> dict:
+        """
+        It executes the simulation using the parameters provided to
+        the constructor of this class.
+        """
         self.served_clients = 0
         values = dict()
         cumulative_means = dict()
@@ -304,18 +312,23 @@ class MultiServerSimulator:
                 self.transient_end = n_batches
             if not self.transient:
                 means['mean_delay'].append(
-                    self.confidence_interval(batch['delay']))
+                    self.confidence_interval(batch['delay'])
+                    )
                 means['mean_delay_hp'].append(
-                    self.confidence_interval(batch['delay_hp']))
+                    self.confidence_interval(batch['delay_hp'])
+                    )
                 means['mean_delay_lp'].append(
-                    self.confidence_interval(batch['delay_lp']))
+                    self.confidence_interval(batch['delay_lp'])
+                    )
                 means['mean_queue_size'].append(
-                    self.confidence_interval(batch['queue_size']))
+                    self.confidence_interval(batch['queue_size'])
+                    )
                 means['mean_queue_size_hp'].append(
-                    self.confidence_interval(batch['queue_size_hp']))
+                    self.confidence_interval(batch['queue_size_hp'])
+                    )
                 means['mean_queue_size_lp'].append(
-                    self.confidence_interval(batch['queue_size_lp']))
-
+                    self.confidence_interval(batch['queue_size_lp'])
+                    )
         means_np = dict()
         for key in means:
             means_np[key] = np.array(means[key])

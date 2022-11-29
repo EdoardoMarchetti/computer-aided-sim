@@ -14,6 +14,54 @@ class SeedGenerator:
         return self.generator.integers(low=100, high=10000)
 
 
+def plot_graph(
+        service_time_case: str,
+        inter_arrival_lambda: float,
+        service_time_distribution: str,
+        delay, left_conf_int, right_conf_int,
+        hp_delay, hp_left_conf_int, hp_right_conf_int,
+        lp_delay, lp_left_conf_int, lp_right_conf_int) -> None:
+    TO_PLOT = set()
+    TO_PLOT.add(('b', 0.2, 'exp'))
+    TO_PLOT.add(('b', 0.2, 'hyp'))
+    TO_PLOT.add(('a', 0.4, 'hyp'))
+    TO_PLOT.add(('a', 0.8, 'det'))
+    TO_PLOT.add(('a', 1.4, 'hyp'))
+    TO_PLOT.add(('b', 1.4, 'hyp'))
+    params = (service_time_case, inter_arrival_lambda, service_time_distribution,)
+    if params in TO_PLOT:
+        _, ax = plt.subplots(1, 1, figsize=(7,7))
+        ax.fill_between(
+            x=np.arange(len(delay)),
+            y1=left_conf_int,
+            y2=right_conf_int,
+            )
+        ax.fill_between(
+            x=np.arange(len(hp_delay)),
+            y1=hp_left_conf_int,
+            y2=hp_right_conf_int,
+        )
+        ax.fill_between(
+            x=np.arange(len(lp_delay)),
+            y1=lp_left_conf_int,
+            y2=lp_right_conf_int,
+        )
+        ax.scatter(np.arange(len(delay)), delay)
+        ax.scatter(np.arange(len(hp_delay)), hp_delay)
+        ax.scatter(np.arange(len(lp_delay)), lp_delay)
+        title = 'Average delay\n' + \
+            f'Service time case: {service_time_case}\n' + \
+            f'Service time distribution: {service_time_distribution}\n' + \
+            f'Inter arrival lambda: {inter_arrival_lambda}'
+        ax.set_title(title)
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Average delay')
+        ax.legend((
+            'Aggregate', 'Aggregate .95 conf int',
+            'High priority', 'High priority .95 conf int',
+            'Low priority', 'Low priority .95 conf int'))
+
+
 def main(args):
     atexit.register(lambda: plt.close('all'))
     get_seed = SeedGenerator(seed=args.seed)
@@ -58,36 +106,14 @@ def main(args):
             means['mean_delay_hp'][:,0], means['mean_delay_hp'][:,1], means['mean_delay_hp'][:,2]
         lp_delay, lp_left_conf_int, lp_right_conf_int = \
             means['mean_delay_lp'][:,0], means['mean_delay_lp'][:,1], means['mean_delay_lp'][:,2]
-        _, ax = plt.subplots(1, 1, figsize=(7,7))
-        ax.plot(delay)
-        ax.fill_between(
-            x=np.arange(len(delay)),
-            y1=left_conf_int,
-            y2=right_conf_int
+        plot_graph(
+            service_time_case,
+            inter_arrival_lambda,
+            service_time_distribution,
+            delay, left_conf_int, right_conf_int,
+            hp_delay, hp_left_conf_int, hp_right_conf_int,
+            lp_delay, lp_left_conf_int, lp_right_conf_int
             )
-        ax.plot(hp_delay)
-        ax.fill_between(
-            x=np.arange(len(hp_delay)),
-            y1=hp_left_conf_int,
-            y2=hp_right_conf_int
-        )
-        ax.plot(lp_delay)
-        ax.fill_between(
-            x=np.arange(len(lp_delay)),
-            y1=lp_left_conf_int,
-            y2=lp_right_conf_int
-        )
-        title = 'Average delay\n' + \
-            f'Service time case: {service_time_case}\n' + \
-            f'Service time distribution: {service_time_distribution}\n' + \
-            f'Inter arrival lambda: {inter_arrival_lambda}'
-        ax.set_title(title)
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Average delay')
-        ax.legend((
-            'Aggregate', 'Aggregate .95 conf int',
-            'High priority', 'High priority .95 conf int',
-            'Low priority', 'Low priority .95 conf int'))
     plt.show(block=False)
     input('Press enter to close all the figures')
 
