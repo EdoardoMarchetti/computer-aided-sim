@@ -1,6 +1,6 @@
 from simulator import AntiPlagiarismSimulator
 import argparse
-from pympler import asizeof
+import sys
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 import numpy as np
@@ -37,15 +37,17 @@ def main(args):
             theoretical_hash_set_size.append(
                 theoretical_size(len(simulator.distinct_hash_sentences))
                     )
-            sentence_set_sizes.append(asizeof.asizeof(
+            sentence_set_sizes.append(sys.getsizeof(
                 simulator.distinct_sentences
                 ))
-            hash_set_sizes.append(asizeof.asizeof(
+            hash_set_sizes.append(sys.getsizeof(
                 simulator.distinct_hash_sentences
                 ))
             fp_tolerance /= 10.0
         n_sentences = len(simulator.distinct_sentences)
         print(f'For S={S} there are {n_sentences} stored.')
+        n_hashes = len(simulator.distinct_hash_sentences)
+        print(f'')
         ax.set_xscale('log')
         ax.plot(tolerances, sentence_set_sizes)
         ax.scatter(tolerances, theoretical_sentence_set_size)
@@ -62,7 +64,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--filepath',
         type=str,
-        default='commedia.txt',
+        required=True,
         help='Path to the file containing text for anti-plagiarism.'
     )
     main(parser.parse_args())
