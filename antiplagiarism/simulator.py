@@ -10,7 +10,7 @@ class FileReaderSingleton:
         if FileReaderSingleton.__instance is not None \
         and FileReaderSingleton.__instance.filepath == filepath:
             raise Exception(
-                'This is a singleton class! Use get_instance() instead.'
+                'This is a singleton class. Use get_instance() instead.'
                 )
         self.filepath = filepath
         with open(filepath, 'r') as f:
