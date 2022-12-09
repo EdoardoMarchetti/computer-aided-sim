@@ -32,6 +32,14 @@ def prob_confidence_interval(
     return (p - z*s_hat, p + z*s_hat)
 
 
+def MGF(n: int, lam: float) -> np.ndarray:
+    mgf = np.empty(shape=(n,), dtype=float)
+    mgf[0] = np.exp(-lam)
+    for i in range(1, n):
+        mgf[i] = np.exp(lam*(mgf[i-1]-1))
+    return mgf
+
+
 def main(args):
     atexit.register(lambda: plt.close('all'))
     lams = (0.6, 0.8, 0.9, 0.95, 0.99, 1.01, 1.05, 1.1, 1.3,)
@@ -79,17 +87,27 @@ def main(args):
                     confidence=args.confidence,
                     k=args.k
                     )
+        max_gen = np.max(generations)
+        mgf = MGF(n=max_gen, lam=lam)
         _, ax = plt.subplots(1, 1, figsize=(7,7))
         ax.fill_between(
             x=generations,
             y1=conf_int_left,
-            y2=conf_int_right
+            y2=conf_int_right,
+            color='lightblue'
             )
-        ax.scatter(generations, probs, marker='o')
+        ax.plot(mgf, color='red', linestyle='dashed')
+        ax.scatter(generations, probs, marker='x', color='black')
         ax.set_xlabel('Generation i')
         ax.set_ylabel('Prob. of extinction before generation i')
         ax.set_title(f'Lambda: {lam}')
-        ax.legend(('Prob. of extinction', f'{args.confidence} confidence interval'))
+        ax.legend(
+            (
+                f'{args.confidence} confidence interval',
+                'Theoretical prob. of extinction',
+                'Estimated prob. of extinction',
+            )
+        )
         if lam == 0.8:
             _, ax = plt.subplots(1, 1, figsize=(7,7))
             ax.hist(n_nodes)

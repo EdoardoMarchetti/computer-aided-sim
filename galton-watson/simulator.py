@@ -11,7 +11,7 @@ class GWSimulator:
         self.lam = lam
         self.generator = np.random.default_rng(seed=seed)
         self.extract_n_child = lambda: self.generator.poisson(lam=lam)
-        self.n_generations = 1
+        self.n_generations = 0
         self.generation_nodes = 1
         self.total_nodes = 1
 
