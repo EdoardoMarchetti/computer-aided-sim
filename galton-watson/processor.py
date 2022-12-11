@@ -76,12 +76,12 @@ def main(args):
             confidence=args.confidence,
             k=args.k
             )
-        print(f'{args.confidence} interval: [{conf_int[0]}, {conf_int[1]}]')
+        print(f'{args.confidence} interval: [{conf_int[1]}, {conf_int[0]}]')
         probs = np.cumsum(probs)
         conf_int_left = np.empty(shape=(len(probs),), dtype=float)
         conf_int_right = np.empty(shape=(len(probs),), dtype=float)
         for i in range(len(probs)):
-            conf_int_left[i], conf_int_right[i] = \
+            conf_int_right[i], conf_int_left[i] = \
                 prob_confidence_interval(
                     p=probs[i],
                     confidence=args.confidence,
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--max_gen_nodes',
         type=int,
-        default=10,
+        default=15,
         help='Maximum number of nodes in the same generation for killing potentially infinite GW trees.'
     )
     parser.add_argument(
