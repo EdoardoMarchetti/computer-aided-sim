@@ -10,7 +10,7 @@ class FileReaderSingleton:
         if FileReaderSingleton.__instance is not None \
         and FileReaderSingleton.__instance.filepath == filepath:
             raise Exception(
-                'This is a singleton class. Use get_instance() instead.'
+                'This is a singleton class. Use readlines method instead.'
                 )
         self.filepath = filepath
         with open(filepath, 'r') as f:
@@ -54,18 +54,18 @@ class AntiPlagiarismSimulator:
         self.text_lines = pd.Series(self.text_lines) \
                     .apply(self.remove_punctuation) \
                     .apply(lambda s: str.lower(s[:-1]))
-        self.n_verses = len(self.text_lines)
         self.words = self.text_lines.apply(str.split) \
-                                    .explode() \
+                                    .explode(ignore_index=True) \
                                     .dropna()
-        self.distinct_words = pd.unique(self.words)
+        self.distinct_words: np.ndarray = pd.unique(self.words)
         self.sentences = np.lib.stride_tricks.sliding_window_view(
             x=self.words.values,
             window_shape=(self.window_size,)
             )
         self.sentences = pd.DataFrame(self.sentences) \
-                        .apply(''.join, axis=1)
+                        .apply(' '.join, axis=1)
         self.distinct_sentences = set(self.sentences.values)
+        # COME SI CALCOLA HASH DIM??
         hash_dim = int(np.ceil(
             len(self.distinct_sentences) / self.fp_tolerance
             ))

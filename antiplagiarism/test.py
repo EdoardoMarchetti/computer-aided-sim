@@ -1,3 +1,0 @@
-from simulator import AntiPlagiarismSimulator
-
-
