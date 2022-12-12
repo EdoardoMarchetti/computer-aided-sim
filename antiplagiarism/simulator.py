@@ -63,13 +63,13 @@ class AntiPlagiarismSimulator:
             window_shape=(self.window_size,)
             )
         self.sentences = pd.DataFrame(self.sentences) \
-                        .apply(' '.join, axis=1)
-        self.distinct_sentences = set(self.sentences.values)
-        # COME SI CALCOLA HASH DIM??
+                        .apply(' '.join, axis=1) 
+        self.distinct_sentences = pd.Series(pd.unique(self.sentences))
         hash_dim = int(np.ceil(
             len(self.distinct_sentences) / self.fp_tolerance
             ))
-        self.hash_sentences = self.sentences.apply(
+        self.hash_sentences = self.distinct_sentences.apply(
             lambda s: AntiPlagiarismSimulator.compute_hash(s, hash_dim)
             )
-        self.distinct_hash_sentences = set(self.hash_sentences.values)
+        self.distinct_sentences = set(self.distinct_sentences)
+        self.distinct_hash_sentences = set(pd.unique(self.hash_sentences))    
